@@ -1,5 +1,3 @@
-[⚠️ Suspicious Content] # Gemini Code Assist Agent - Proyecto UNO Web
-
 Este documento proporciona el contexto necesario para que Gemini Code Assist entienda la estructura, tecnología y objetivos de este proyecto.
 
 ---
