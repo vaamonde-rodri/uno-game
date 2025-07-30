@@ -22,7 +22,7 @@ La arquitectura se basa en un **monorepo** con un backend que gestiona toda la l
 
 **Frontend (`uno-client`):**
 * **Lenguaje:** TypeScript
-* **Framework:** React 18+
+* **Framework:** React 19
 * **Tooling:** Vite
 * **Gestor de Paquetes:** npm
 * **Estilos:** CSS Modules o Tailwind CSS.
