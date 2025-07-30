@@ -13,15 +13,15 @@ La arquitectura se basa en un **monorepo** con un backend que gestiona toda la l
 ## 2. Pila Tecnológica (Tech Stack)
 
 **Backend (`uno-server`):**
-* **Lenguaje:** Java 17+
+* **Lenguaje:** Java 21
 * **Framework:** Spring Boot 3
-* **Gestor de Dependencias:** Maven
+* **Gestor de Dependencias:** Gradle (con Kotlin)
 * **Comunicación:** Spring Web (para API REST) y Spring WebSocket (para tiempo real).
 * **Base de Datos:** PostgreSQL
 * **Librerías Clave:** Spring Data JPA, Lombok.
 
 **Frontend (`uno-client`):**
-* **Lenguaje:** JavaScript (o TypeScript, que es preferible).
+* **Lenguaje:** TypeScript
 * **Framework:** React 18+
 * **Tooling:** Vite
 * **Gestor de Paquetes:** npm
