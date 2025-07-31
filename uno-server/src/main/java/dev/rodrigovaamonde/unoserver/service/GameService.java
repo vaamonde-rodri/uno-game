@@ -102,6 +102,7 @@ public class GameService {
         } while (firstCard.getValue() == CardValue.WILD_DRAW_FOUR);
 
         game.getDiscardPile().add(firstCard);
+        game.setCurrentColor(firstCard.getColor());
 
         //TODO: Aplicaar el efecto de la primera carta si es de acción (Saltar, Reversa, +2)
 
@@ -122,7 +123,7 @@ public class GameService {
 
         //2. Validar el estado de la partida
         if (game.getStatus() != Game.GameStatus.IN_PROGRESS) {
-            throw new IllegalStateException("Cannot play a card in a game that is not in progress.");
+            throw new IllegalStateException("Game is not in progress.");
         }
 
         //3. Encontrar al jugador y la carta en su mano
@@ -143,30 +144,16 @@ public class GameService {
 
         Card topDiscardCard = game.getDiscardPile().getLast();
         if (!isCardPlayable(cardToPlay, topDiscardCard, game.getCurrentColor())) {
-            throw new IllegalStateException("Card cannot be played on top of " + topDiscardCard);
+            throw new IllegalStateException("Card " + cardToPlay + " cannot be played on top of " + topDiscardCard);
         }
 
         //5. Ejecutar la jugada
         player.getHand().remove(cardToPlay);
         game.getDiscardPile().add(cardToPlay);
 
-        //TODO: Implentar la lógica completa de los efectos de las cartas jugadas
-
-        //5.1. Manejar efectos especiales de las cartas
-        if (cardToPlay.getValue() == CardValue.WILD || cardToPlay.getValue() == CardValue.WILD_DRAW_FOUR) {
-            // Para cartas comodín, cambiar el color del juego al especificado en el request
-            if (request.chosenColor() != null) {
-                game.setCurrentColor(request.chosenColor());
-            }
-        } else {
-            // Para cartas normales, el color actual es el color de la carta jugada
-            game.setCurrentColor(cardToPlay.getColor());
-        }
-
-        //6. Determinar el siguiente jugador (lógica simple por ahora)
-        int currentPlayerIndex = game.getPlayers().indexOf(game.getCurrentPlayer());
-        int nextPlayerIndex = (currentPlayerIndex + 1) % game.getPlayers().size();
-        game.setCurrentPlayer(game.getPlayers().get(nextPlayerIndex));
+        //6. Aplicar efecto de la carta y determinar el siguiente jugador
+        Player nextPlayer = applyCardEffect(game, player, cardToPlay, request.chosenColor());
+        game.setCurrentPlayer(nextPlayer);
 
         //7. Guardar y notificar el cambio
         Game updatedGame = gameRepository.save(game);
@@ -204,18 +191,18 @@ public class GameService {
         // Cartas de colores (Rojo, Verde, Azul, Amarillo)
         for (Color color : new Color[]{Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW}) {
             // Una carta de '0' por color
-            deck.add(new Card(null, color, CardValue.ZERO));
+            deck.add(new Card(color, CardValue.ZERO));
 
             // Dos cartas del '1' al '9' por color
             for (CardValue value : new CardValue[]{CardValue.ONE, CardValue.TWO, CardValue.THREE, CardValue.FOUR, CardValue.FIVE, CardValue.SIX, CardValue.SEVEN, CardValue.EIGHT, CardValue.NINE}) {
-                deck.add(new Card(null, color, value));
-                deck.add(new Card(null, color, value));
+                deck.add(new Card(color, value));
+                deck.add(new Card(color, value));
             }
 
             // Dos cartas de acción por color
             for (CardValue value : new CardValue[]{CardValue.SKIP, CardValue.REVERSE, CardValue.DRAW_TWO}) {
-                deck.add(new Card(null, color, value));
-                deck.add(new Card(null, color, value));
+                deck.add(new Card(color, value));
+                deck.add(new Card(color, value));
             }
         }
 
@@ -229,17 +216,98 @@ public class GameService {
     }
 
     private boolean isCardPlayable(Card cardToPlay, Card topDiscardCard, Color currentColor) {
-        //Un comodín simple se puede jugar
-        if (cardToPlay.getValue() == CardValue.WILD) {
-            return true;
+        //1. Un comodín (negro) puede jugarse en cualquier momento
+        if (cardToPlay.getColor() == Color.BLACK) return true;
+
+        //2. La caarta coincide con el color activo
+        //3. O la carta coincide en valor con la caarta suerior de la pila de descarte
+        return cardToPlay.getColor() == currentColor || cardToPlay.getValue() == topDiscardCard.getValue();
+    }
+
+    private Player applyCardEffect(Game game, Player currentPlayer, Card playedCard, Color chosenColor) {
+        //Primero, se actualiza el color del juego
+        if (playedCard.getColor() == Color.BLACK) {
+            if (chosenColor == null || chosenColor == Color.BLACK) {
+                throw new IllegalStateException(
+                    "A valid color (RED, GREEN, BLUE, YELLOW) must be chosen when playing a wild card");
+            }
+            game.setCurrentColor(chosenColor);
+        } else {
+            game.setCurrentColor(playedCard.getColor());
         }
 
-        //Si el color activo coincide (por un comodín previo)
-        if (cardToPlay.getColor() == currentColor) {
-            return true;
-        }
+        Player nextPlayer = determineNextPlayer(game,
+            currentPlayer,
+            1);  // Por defecto, el siguiente jugador es el que sigue en turno
 
-        //La carta coincide en color o valor con la carta física de la pila
-        return cardToPlay.getColor() == topDiscardCard.getColor() || cardToPlay.getValue() == topDiscardCard.getValue();
+        switch (playedCard.getValue()) {
+            case SKIP:
+                // El siguiente jugador pierde su turno
+                return determineNextPlayer(game, currentPlayer, 2);
+            case REVERSE:
+                // Cambia el sentido del juego
+                game.setReversed(!game.isReversed());
+                // Si solo hay 2 jugadores, REVERSE actúa como SKIP
+                if (game.getPlayers().size() == 2) {
+                    return determineNextPlayer(game, currentPlayer, 2);
+                }
+                //Con más de 2 jugadores, el turno va al jugador anterior
+                return  determineNextPlayer(game, currentPlayer, 1);
+            case DRAW_TWO:
+                // El siguiente jugador roba dos cartas y pierde su turno
+                drawCardsForPlayer(game, nextPlayer, 2);
+                return determineNextPlayer(game, currentPlayer, 2);
+            case WILD_DRAW_FOUR:
+                // El siguiente jugador roba cuatro cartas y pierde su turno
+                drawCardsForPlayer(game, nextPlayer, 4);
+                return determineNextPlayer(game, currentPlayer, 2);
+            case WILD:
+                // Un comodín no tiene efecto especial, solo cambia el color
+                // El siguiente jugador es el que sigue en turno
+                return nextPlayer;
+            default:
+                return nextPlayer; // Para cualquier otra carta, simplemente retorna el siguiente jugador
+        }
+    }
+
+    private Player determineNextPlayer(Game game, Player currentPlayer, int positionsToAdvance) {
+        List<Player> players = game.getPlayers();
+        int currentPlayerIndex = players.indexOf(currentPlayer);
+        int totalPlayers = players.size();
+
+
+        int direction = game.isReversed() ? -1 : 1;
+        int nextPlayerIndex = (currentPlayerIndex + direction * positionsToAdvance + totalPlayers) % totalPlayers;
+
+        if (nextPlayerIndex < 0) {
+            nextPlayerIndex += totalPlayers; // Asegura que el índice no sea negativo
+        }
+        return players.get(nextPlayerIndex);
+    }
+
+    private void drawCardsForPlayer(Game game, Player player, int numberOfCards) {
+        List<Card> drawPile = game.getDrawPile();
+
+        for (int i = 0; i < numberOfCards; i++) {
+            if (drawPile.isEmpty()) {
+                //si el mazo de robo está vacío, se baraja la pila de descarte y se convierte en el nuevo mazo de robo
+                reshuffleDiscardPile(game);
+                // Verificar si después de rebarajar tenemos cartas disponibles
+                if (drawPile.isEmpty()) {
+                    // No hay más cartas disponibles, terminar el bucle
+                    break;
+                }
+            }
+            player.getHand().add(drawPile.removeLast());
+        }
+    }
+
+    private void reshuffleDiscardPile(Game game) {
+        Card topCard = game.getDiscardPile().removeLast(); // Retirar la última carta para no incluirla en el nuevo mazo
+        List<Card> newDrawPile = new ArrayList<>(game.getDiscardPile());
+        Collections.shuffle(newDrawPile);
+        game.setDrawPile(newDrawPile);
+        game.getDiscardPile().clear();
+        game.getDiscardPile().add(topCard); // Volver a añadir la última carta como la nueva superior de la pila de descarte
     }
 }

@@ -43,7 +43,11 @@ class GameServiceTest {
         List<Card> deck = new ArrayList<>();
         for (int i = 0; i < cardCount; i++) {
             // Las cartas no necesitan ser variadas, solo existir para la lógica de repartir.
-            deck.add(new Card(Color.BLUE, CardValue.ONE));
+            Card card = new Card(Color.BLUE, CardValue.ONE);
+            //Asignamos un ID único para cada carta, aunque no es necesario para la lógica del juego.
+            card.setId((long) (i + 1));
+            deck.add(card);
+
         }
         return deck;
     }
@@ -69,7 +73,7 @@ class GameServiceTest {
     }
 
     @Test
-    void joinGame_shouldNotifyClientesViaWebStock() {
+    void joinGame_shouldNotifyClientsViaWebStock() {
         Long gameId = 1L;
         String gameCode ="ABCDEF";
         Game game = new Game(gameCode);
@@ -162,7 +166,7 @@ class GameServiceTest {
     }
 
     @Test
-    void startGame_shouldNotifyClientesViaWebSocket() {
+    void startGame_shouldNotifyClientsViaWebSocket() {
         Long gameId = 1L;
         String gameCode = "XYZ123";
         Game game = new Game(gameCode);
@@ -258,7 +262,7 @@ class GameServiceTest {
         // Act & Assert
         IllegalStateException exception = assertThrows(IllegalStateException.class,
             () -> gameService.playCard(game.getGameCode(), request));
-        assertTrue(exception.getMessage().startsWith("Card cannot be played on top of"));
+        assertTrue(exception.getMessage().startsWith("Card "));
     }
 
     @Test
@@ -286,17 +290,23 @@ class GameServiceTest {
      * Método de ayuda para configurar un juego en progreso para los tests.
      */
     private Game setupInProgressGame() {
+        return setupInProgressGame(2); // Configura un juego con 2 jugadores
+    }
+
+    private Game setupInProgressGame(int playerCount) {
         String gameCode = "TEST123";
         Game game = new Game(gameCode);
         game.setStatus(Game.GameStatus.IN_PROGRESS);
-
-        // Añadir jugadores con 7 cartas cada uno
-        for (int i = 1; i <= 2; i++) {
+        for (int i = 1; i <= playerCount; i++) {
             Player player = new Player("Player " + i);
             player.setId((long) i);
             player.setHand(createTestDeck(7));
             game.addPlayer(player);
         }
+
+        // Inicializar el mazo de robo con cartas suficientes para los tests
+        List<Card> drawPile = createTestDeck(20); // Crear un mazo con 20 cartas
+        game.setDrawPile(drawPile);
 
         // Poner una carta inicial en la pila de descarte
         Card topCard = new Card(Color.RED, CardValue.FIVE);
@@ -305,9 +315,70 @@ class GameServiceTest {
         game.setCurrentColor(Color.RED);
         game.setCurrentPlayer(game.getPlayers().getFirst());
 
-        when(gameRepository.findByGameCode(gameCode)).thenReturn(Optional.of(game));
-        lenient().when(gameRepository.save(any(Game.class))).thenReturn(game);
+        lenient().when(gameRepository.findByGameCode(gameCode)).thenReturn(Optional.of(game));
+        lenient().when(gameRepository.save(any(Game.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         return game;
+    }
+
+    @Test
+    void playCard_shouldSkipNextPlayer_whenSkipCardIsPlayed() {
+        // Arrange
+        Game game = setupInProgressGame(3); // 3 jugadores para ver el salto
+        Player player1 = game.getPlayers().get(0);
+        Player player3 = game.getPlayers().get(2);
+        Card skipCard = new Card(Color.RED, CardValue.SKIP);
+        skipCard.setId(100L);
+        player1.getHand().add(skipCard);
+        PlayCardRequestDTO request = new PlayCardRequestDTO(player1.getId(), skipCard.getId(), null);
+
+        // Act
+        gameService.playCard(game.getGameCode(), request);
+
+        // Assert
+        // El turno debe saltar al jugador 3
+        assertEquals(player3.getId(), game.getCurrentPlayer().getId());
+    }
+
+    @Test
+    void playCard_shouldReverseTurnOrder_whenReverseCardIsPlayed() {
+        // Arrange
+        Game game = setupInProgressGame(3); // 3 jugadores
+        Player player1 = game.getPlayers().get(0);
+        Player player3 = game.getPlayers().get(2); // El jugador anterior en orden inverso
+        Card reverseCard = new Card(Color.RED, CardValue.REVERSE);
+        reverseCard.setId(100L);
+        player1.getHand().add(reverseCard);
+        PlayCardRequestDTO request = new PlayCardRequestDTO(player1.getId(), reverseCard.getId(), null);
+
+        // Act
+        gameService.playCard(game.getGameCode(), request);
+
+        // Assert
+        assertTrue(game.isReversed());
+        // El turno debe ir al jugador "anterior"
+        assertEquals(player3.getId(), game.getCurrentPlayer().getId());
+    }
+
+    @Test
+    void playCard_shouldMakeNextPlayerDrawTwoAndSkip_whenDrawTwoIsPlayed() {
+        // Arrange
+        Game game = setupInProgressGame(3);
+        Player player1 = game.getPlayers().get(0);
+        Player player2 = game.getPlayers().get(1);
+        Player player3 = game.getPlayers().get(2);
+        Card drawTwoCard = new Card(Color.RED, CardValue.DRAW_TWO);
+        drawTwoCard.setId(100L);
+        player1.getHand().add(drawTwoCard);
+        PlayCardRequestDTO request = new PlayCardRequestDTO(player1.getId(), drawTwoCard.getId(), null);
+
+        // Act
+        gameService.playCard(game.getGameCode(), request);
+
+        // Assert
+        // El jugador 2 debe tener 7 + 2 = 9 cartas
+        assertEquals(9, player2.getHand().size());
+        // El turno debe saltar al jugador 3
+        assertEquals(player3.getId(), game.getCurrentPlayer().getId());
     }
 }
