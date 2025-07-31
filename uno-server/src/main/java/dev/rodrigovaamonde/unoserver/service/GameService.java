@@ -1,5 +1,7 @@
 package dev.rodrigovaamonde.unoserver.service;
 
+import dev.rodrigovaamonde.unoserver.dto.GameResponseDTO;
+import dev.rodrigovaamonde.unoserver.dto.PlayCardRequestDTO;
 import dev.rodrigovaamonde.unoserver.model.*;
 import dev.rodrigovaamonde.unoserver.repository.GameRepository;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -62,15 +64,15 @@ public class GameService {
 
     @Transactional
     public Game startGame(Long gameId) {
-        Game game =gameRepository.findById(gameId)
+        Game game = gameRepository.findById(gameId)
             .orElseThrow(() -> new RuntimeException("Game not found with id: " + gameId));
 
         //1. Validaciones
-        if (game.getStatus() !=Game.GameStatus.WAITING_FOR_PLAYERS) {
+        if (game.getStatus() != Game.GameStatus.WAITING_FOR_PLAYERS) {
             throw new IllegalStateException("Game has already started or is finished");
         }
 
-        if (game.getPlayers().size() <2) {
+        if (game.getPlayers().size() < 2) {
             throw new IllegalStateException("Cannot start the game with fewer than 2 players");
         }
 
@@ -112,9 +114,58 @@ public class GameService {
         return startedGame;
     }
 
+    @Transactional
+    public void playCard(String gameCode, PlayCardRequestDTO request) {
+        //1. Buscar la partida por el código
+        Game game = gameRepository.findByGameCode(gameCode)
+            .orElseThrow(() -> new RuntimeException("Game not found with code: " + gameCode));
+
+        //2. Validar el estado de la partida
+        if (game.getStatus() != Game.GameStatus.IN_PROGRESS) {
+            throw new IllegalStateException("Cannot play a card in a game that is not in progress.");
+        }
+
+        //3. Encontrar al jugador y la carta en su mano
+        Player player = game.getPlayers().stream()
+            .filter(p -> p.getId().equals(request.playerId()))
+            .findFirst()
+            .orElseThrow(() -> new RuntimeException("Player not found with id " + request.playerId() + " in game " + gameCode));
+
+        Card cardToPlay = player.getHand().stream()
+            .filter(card -> card.getId().equals(request.cardId()))
+            .findFirst()
+            .orElseThrow(() -> new RuntimeException("Card not found with id " + request.cardId() + " in player's hand"));
+
+        //4. Validar la jugada
+        if (!player.getId().equals(game.getCurrentPlayer().getId())) {
+            throw new IllegalStateException("It's not your turn to play.");
+        }
+
+        Card topDiscardCard = game.getDiscardPile().getLast();
+        if (!isCardPlayable(cardToPlay, topDiscardCard, game.getCurrentColor())) {
+            throw new IllegalStateException("Card cannot be played on top of " + topDiscardCard);
+        }
+
+        //5. Ejecutar la jugada
+        player.getHand().remove(cardToPlay);
+        game.getDiscardPile().add(cardToPlay);
+
+        //TODO: Implentar la lógica completa de los efectos de las cartas jugadas
+
+        //6. Determinar el siguiente jugador (lógica simple por ahora)
+        int currentPlayerIndex = game.getPlayers().indexOf(game.getCurrentPlayer());
+        int nextPlayerIndex = (currentPlayerIndex + 1) % game.getPlayers().size();
+        game.setCurrentPlayer(game.getPlayers().get(nextPlayerIndex));
+
+        //7. Guardar y notificar el cambio
+        Game updatedGame = gameRepository.save(game);
+        notifyGameUpdate(updatedGame);
+    }
+
     private void notifyGameUpdate(Game game) {
         String destination = "/topic/" + game.getGameCode();
-        messagingTemplate.convertAndSend(destination, game);
+        GameResponseDTO gameResponse = GameResponseDTO.fromEntity(game);
+        messagingTemplate.convertAndSend(destination, gameResponse);
     }
 
     private String generateUniqueGameCode() {
@@ -161,5 +212,20 @@ public class GameService {
         });
 
         return deck;
+    }
+
+    private boolean isCardPlayable(Card cardToPlay, Card topDiscardCard, Color currentColor) {
+        //Un comodín simple se puede jugar
+        if (cardToPlay.getValue() == CardValue.WILD) {
+            return true;
+        }
+
+        //Si el color activo coincide (por un comodín previo)
+        if (cardToPlay.getColor() == currentColor) {
+            return true;
+        }
+
+        //La carta coincide en color o valor con la carta física de la pila
+        return cardToPlay.getColor() == topDiscardCard.getColor() || cardToPlay.getValue() == topDiscardCard.getValue();
     }
 }

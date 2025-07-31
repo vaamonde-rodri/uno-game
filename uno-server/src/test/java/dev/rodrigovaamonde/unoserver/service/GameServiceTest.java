@@ -1,12 +1,15 @@
 package dev.rodrigovaamonde.unoserver.service;
 
+import dev.rodrigovaamonde.unoserver.dto.GameResponseDTO;
 import dev.rodrigovaamonde.unoserver.model.*; // Importar los modelos de cartas
 import dev.rodrigovaamonde.unoserver.repository.GameRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.util.ArrayList; // Importar ArrayList
 import java.util.List;      // Importar List
@@ -21,6 +24,9 @@ class GameServiceTest {
 
     @Mock
     private GameRepository gameRepository;
+
+    @Mock
+    private SimpMessagingTemplate messagingTemplate;
 
     @InjectMocks
     private GameService gameService;
@@ -58,6 +64,25 @@ class GameServiceTest {
         assertEquals("Rodrigo", updatedGame.getPlayers().getFirst().getName());
         verify(gameRepository, times(1)).findById(gameId);
         verify(gameRepository, times(1)).save(game);
+    }
+
+    @Test
+    void joinGame_shouldNotifyClientesViaWebStock() {
+        Long gameId = 1L;
+        String gameCode ="ABCDEF";
+        Game game = new Game(gameCode);
+        game.setId(gameId);
+
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(gameRepository.save(any(Game.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        gameService.joinGame(gameId, "Rodrigo");
+
+        ArgumentCaptor<String> destinationCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<GameResponseDTO> payloadCaptor = ArgumentCaptor.forClass(GameResponseDTO.class);
+        verify(messagingTemplate, times(1)).convertAndSend(destinationCaptor.capture(), payloadCaptor.capture());
+        assertEquals("/topic/" + gameCode, destinationCaptor.getValue());
+        assertEquals(1, payloadCaptor.getValue().getPlayers().size());
     }
 
     @Test
@@ -132,6 +157,26 @@ class GameServiceTest {
         assertEquals(1, startedGame.getDiscardPile().size());
 
         verify(gameRepository, times(1)).save(game);
+    }
+
+    @Test
+    void startGame_shouldNotifyClientesViaWebSocket() {
+        Long gameId = 1L;
+        String gameCode = "XYZ123";
+        Game game = new Game(gameCode);
+        game.setId(gameId);
+        game.setDrawPile(createTestDeck(30));
+        game.addPlayer(new Player("Player 1"));
+        game.addPlayer(new Player("Player 2"));
+
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(gameRepository.save(any(Game.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        gameService.startGame(gameId);
+
+        ArgumentCaptor<String> destinationCaptor = ArgumentCaptor.forClass(String.class);
+        verify(messagingTemplate, times(1)).convertAndSend(destinationCaptor.capture(), any(GameResponseDTO.class));
+        assertEquals("/topic/" + gameCode, destinationCaptor.getValue());
     }
 
     @Test

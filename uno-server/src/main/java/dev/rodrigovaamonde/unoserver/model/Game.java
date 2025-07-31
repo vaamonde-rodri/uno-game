@@ -3,6 +3,7 @@ package dev.rodrigovaamonde.unoserver.model;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,12 +33,16 @@ public class Game {
     private List<Card> discardPile = new ArrayList<>();
 
     @ManyToOne
+    @ToString.Exclude
     private Player currentPlayer;
 
     private boolean isReversed = false;
 
     @Enumerated(EnumType.STRING)
     private GameStatus status = GameStatus.WAITING_FOR_PLAYERS;
+
+    @Enumerated(EnumType.STRING)
+    private Color currentColor;
 
     public enum GameStatus {
         WAITING_FOR_PLAYERS,
