@@ -2,6 +2,7 @@ package dev.rodrigovaamonde.unoserver.service;
 
 import dev.rodrigovaamonde.unoserver.model.*;
 import dev.rodrigovaamonde.unoserver.repository.GameRepository;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,11 +15,13 @@ import java.util.stream.IntStream;
 @Service
 public class GameService {
     private final GameRepository gameRepository;
+    private final SimpMessagingTemplate messagingTemplate;
     private static final SecureRandom random = new SecureRandom();
     private static final String ALPHANUMERIC_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
-    public GameService(GameRepository gameRepository) {
+    public GameService(GameRepository gameRepository, SimpMessagingTemplate messagingTemplate) {
         this.gameRepository = gameRepository;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @Transactional
@@ -51,7 +54,10 @@ public class GameService {
 
         game.addPlayer(newPlayer);
 
-        return gameRepository.save(game);
+        Game updatedGame = gameRepository.save(game);
+        notifyGameUpdate(updatedGame);
+
+        return updatedGame;
     }
 
     @Transactional
@@ -100,7 +106,15 @@ public class GameService {
         //5. Establecer el primer jugador
         game.setCurrentPlayer(game.getPlayers().getFirst());
 
-        return gameRepository.save(game);
+        Game startedGame = gameRepository.save(game);
+        notifyGameUpdate(startedGame);
+
+        return startedGame;
+    }
+
+    private void notifyGameUpdate(Game game) {
+        String destination = "/topic/" + game.getGameCode();
+        messagingTemplate.convertAndSend(destination, game);
     }
 
     private String generateUniqueGameCode() {
