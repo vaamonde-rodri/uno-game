@@ -130,12 +130,13 @@ uno-game/
 
 ## 🎯 Reglas del Juego
 
-El juego seguirá las reglas clásicas del UNO:
-- Cada jugador comienza con 7 cartas
-- Los jugadores deben hacer coincidir color o número
-- Cartas especiales: Saltar, Reversa, +2, +4, Cambio de Color
-- Decir "UNO" cuando quede una carta
-- El primer jugador en quedarse sin cartas gana la ronda
+Las reglas completas y detalladas del juego se encuentran en el documento [RULES.md](RULES.md).
+
+A continuación, un resumen rápido:
+- **Objetivo:** Ser el primer jugador en quedarse sin cartas.
+- **Mecánica básica:** Jugar una carta que coincida en color, número o símbolo.
+- **Cartas especiales:** Reversa, Salta turno, +2, Comodín y Comodín +4.
+- **Regla "UNO":** Debes anunciar "UNO" cuando te quede una sola carta.
 
 ## 🧪 Testing
 
