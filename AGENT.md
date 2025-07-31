@@ -148,3 +148,6 @@ Aunque el enfoque principal está en el backend, se recomienda en el futuro:
 2. Definir las entidades JPA iniciales: `Player` y `Game`.
 3. Crear un componente de "Lobby" en React donde los jugadores puedan esperar antes de que empiece la partida.
 4. Comenzar a implementar y testear la lógica básica del flujo de turnos y jugadas en el backend.
+
+## 9. Recursos y Documentación
+* **Reglas del juego UNO:** Las tienes definidas en el archivo `RULES.md`.
