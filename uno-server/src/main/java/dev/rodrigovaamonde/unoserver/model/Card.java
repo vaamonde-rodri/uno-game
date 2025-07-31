@@ -23,4 +23,9 @@ public class Card {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private CardValue value;
+
+    public Card(Color color, CardValue value) {
+        this.color = color;
+        this.value = value;
+    }
 }
