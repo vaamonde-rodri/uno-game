@@ -160,6 +160,44 @@ public class GameService {
         notifyGameUpdate(updatedGame);
     }
 
+    @Transactional
+    public void drawCard(String gameCode, Long playerId) {
+        //1. Encontrar la partida y el jugador
+        Game game = gameRepository.findByGameCode(gameCode)
+            .orElseThrow(() -> new RuntimeException("Game not found with code: " + gameCode));
+
+        Player player = game.getPlayers().stream()
+            .filter(p -> p.getId().equals(playerId))
+            .findFirst()
+            .orElseThrow(() -> new RuntimeException("Player not found with id " + playerId + " in game " + gameCode));
+
+        //2. Validaciones
+        if (game.getStatus() != Game.GameStatus.IN_PROGRESS) {
+            throw new IllegalStateException("Game is not in progress.");
+        }
+        if (!player.getId().equals(game.getCurrentPlayer().getId())) {
+            throw new IllegalStateException("It's not your turn to draw a card.");
+        }
+
+        //3. Validar que el jugador realmente no puede jugar ninguna carta
+        Card topDiscardCard = game.getDiscardPile().getLast();
+        boolean hasPlayableCard = player.getHand().stream()
+            .anyMatch(card -> isCardPlayable(card, topDiscardCard, game.getCurrentColor()));
+        if (hasPlayableCard) {
+            throw new IllegalStateException("You have playable cards in your hand. You must play a card instead of drawing.");
+        }
+
+        //4. Robar una carta del mazo
+        drawCardsForPlayer(game, player, 1);
+
+        //5. Determinar el siguiente jugador
+        game.setCurrentPlayer(determineNextPlayer(game, player, 1));
+
+        //6. Guardar el estado del juego y notificar a los jugadores
+        Game updatedGame = gameRepository.save(game);
+        notifyGameUpdate(updatedGame);
+    }
+
     private void notifyGameUpdate(Game game) {
         if (game == null) {
             return;

@@ -1,5 +1,6 @@
 package dev.rodrigovaamonde.unoserver.controller;
 
+import dev.rodrigovaamonde.unoserver.dto.DrawCardRequestDTO;
 import dev.rodrigovaamonde.unoserver.dto.PlayCardRequestDTO;
 import dev.rodrigovaamonde.unoserver.service.GameService;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +35,23 @@ public class GameWebSocketController {
             // TODO: Enviar un mensaje de error específico al jugador que hizo la jugada.
             // Por ahora, lo registramos en el log del servidor.
             log.error("Error processing play card request for game {}: {}", gameCode, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Se activa cuando un cliente envía un mensaje a "/app/game/{gameCode}/draw-card".
+     * @param gameCode El código de la partida, extraído de la URL del destino.
+     * @param request El payload con los detalles de la solicitud de robar una carta.
+     */
+    @MessageMapping("/game/{gameCode}/draw-card")
+    public void drawCard(
+        @DestinationVariable String gameCode,
+        @Payload DrawCardRequestDTO request
+    ) {
+        try {
+            gameService.drawCard(gameCode, request.playerId());
+        } catch (Exception e) {
+            log.error("Error processing draw card request for game {}: {}", gameCode, e.getMessage(), e);
         }
     }
 }
