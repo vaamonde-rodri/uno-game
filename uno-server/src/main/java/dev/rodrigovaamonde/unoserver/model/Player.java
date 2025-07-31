@@ -24,6 +24,10 @@ public class Player {
     @JoinColumn(name = "player_id")
     private List<Card> hand = new ArrayList<>();
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "game_id")
+    private Game game;
+
     public Player(String name) {
         this.name = name;
     }

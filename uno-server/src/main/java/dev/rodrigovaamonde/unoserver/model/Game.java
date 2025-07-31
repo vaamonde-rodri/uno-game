@@ -20,8 +20,7 @@ public class Game {
     @Column(nullable = false, unique = true)
     private String gameCode;
 
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinColumn(name = "game_id")
+    @OneToMany(mappedBy = "game", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<Player> players = new ArrayList<>();
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
@@ -50,4 +49,8 @@ public class Game {
         this.gameCode = gameCode;
     }
 
+    public void addPlayer(Player player) {
+        players.add(player);
+        player.setGame(this);
+    }
 }

@@ -1,9 +1,6 @@
 package dev.rodrigovaamonde.unoserver.service;
 
-import dev.rodrigovaamonde.unoserver.model.Card;
-import dev.rodrigovaamonde.unoserver.model.CardValue;
-import dev.rodrigovaamonde.unoserver.model.Color;
-import dev.rodrigovaamonde.unoserver.model.Game;
+import dev.rodrigovaamonde.unoserver.model.*;
 import dev.rodrigovaamonde.unoserver.repository.GameRepository;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +28,21 @@ public class GameService {
         Collections.shuffle(deck);
 
         game.setDrawPile(deck);
+        return gameRepository.save(game);
+    }
+
+    public Game joinGame(Long gameId, String playerName) {
+        Game game = gameRepository.findById(gameId)
+            .orElseThrow(() -> new RuntimeException("Game not found with id: " + gameId));
+
+        if (!"LOBBY".equals(game.getStatus())) {
+            throw new IllegalStateException("Cannot join a game that is already in progress or finished.");
+        }
+
+        Player newPlayer = new Player(playerName);
+
+        game.addPlayer(newPlayer);
+
         return gameRepository.save(game);
     }
 
