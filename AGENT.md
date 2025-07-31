@@ -1,3 +1,5 @@
+# AGENT.md
+
 Este documento proporciona el contexto necesario para que Gemini Code Assist entienda la estructura, tecnología y objetivos de este proyecto.
 
 ---
@@ -18,7 +20,7 @@ La arquitectura se basa en un **monorepo** con un backend que gestiona toda la l
 * **Gestor de Dependencias:** Gradle (con Kotlin)
 * **Comunicación:** Spring Web (para API REST) y Spring WebSocket (para tiempo real).
 * **Base de Datos:** PostgreSQL
-* **Librerías Clave:** Spring Data JPA, Lombok.
+* **Librerías Clave:** Spring Data JPA, Lombok
 
 **Frontend (`uno-client`):**
 * **Lenguaje:** TypeScript
@@ -35,8 +37,7 @@ La arquitectura se basa en un **monorepo** con un backend que gestiona toda la l
 
 El proyecto está organizado en dos módulos principales dentro de la raíz.
 
-
-````
+````text
 uno-game/
 ├── uno-server/                 # Módulo del Backend (Spring Boot)
 │   ├── src/main/java/com/rodrigovaamonde/unoserver/
@@ -85,13 +86,65 @@ uno-game/
 
 ## 6. Comandos Importantes
 
-* **Arrancar Backend:** Desde la raíz, `cd uno-server && ./mvnw spring-boot:run`
-* **Arrancar Frontend:** Desde la raíz, `cd uno-client && npm install && npm run dev`
+* **Arrancar Backend:**  
+  Desde la raíz:  
+  ```bash
+  cd uno-server && ./mvnw spring-boot:run
+  ```
+
+* **Arrancar Frontend:**  
+  Desde la raíz:  
+  ```bash
+  cd uno-client && npm install && npm run dev
+  ```
 
 ---
 
-## 7. Objetivos Actuales / Siguientes Pasos
+## 7. Pruebas (Testing)
 
-1.  Establecer la conexión básica de WebSocket entre el `uno-client` y el `uno-server`.
-2.  Definir las entidades JPA iniciales: `Player` y `Game`.
-3.  Crear un componente de "Lobby" en React donde los jugadores puedan esperar antes de que empiece la partida.
+### 🔹 Backend
+
+El backend debe estar bien cubierto por tests unitarios y de integración, especialmente en la lógica del juego.
+
+**Herramientas utilizadas:**
+* **JUnit 5** – Para test unitarios.
+* **Mockito** – Para mocks de servicios y repositorios.
+* **Spring Boot Test** – Para pruebas de integración con contexto completo.
+
+**Áreas clave a testear:**
+- Reglas del juego (servicios).
+- Controladores REST y WebSocket.
+- Validaciones y flujo del juego (turnos, penalizaciones, fin de partida).
+- Persistencia y recuperación de partidas y jugadores.
+
+**Ejemplo de test unitario básico:**
+```java
+@Test
+void givenPlayerDrawsCard_whenNoPlayableCard_thenPlayerDraws() {
+    // Arrange
+    Player player = new Player("Rodrigo");
+    Game game = gameService.createGame();
+    game.addPlayer(player);
+
+    // Act
+    gameService.playTurn(player.getId(), /* carta no jugable */ null);
+
+    // Assert
+    assertEquals(8, player.getHand().size()); // Roba una carta
+}
+```
+
+### 🔹 Frontend (opcional por ahora)
+
+Aunque el enfoque principal está en el backend, se recomienda en el futuro:
+- **React Testing Library** + **Jest** para tests de componentes.
+- Mocks de WebSocket para probar flujos en tiempo real.
+
+---
+
+## 8. Objetivos Actuales / Siguientes Pasos
+
+1. Establecer la conexión básica de WebSocket entre el `uno-client` y el `uno-server`.
+2. Definir las entidades JPA iniciales: `Player` y `Game`.
+3. Crear un componente de "Lobby" en React donde los jugadores puedan esperar antes de que empiece la partida.
+4. Comenzar a implementar y testear la lógica básica del flujo de turnos y jugadas en el backend.
