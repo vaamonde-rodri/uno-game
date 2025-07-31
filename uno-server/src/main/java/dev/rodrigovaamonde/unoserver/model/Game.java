@@ -26,11 +26,11 @@ public class Game {
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JoinColumn(name = "deck_game_id")
-    private List<Card> deck = new ArrayList<>();
+    private List<Card> drawPile = new ArrayList<>();
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JoinColumn(name = "discard_pile_game_id")
-    private List<Card> discard = new ArrayList<>();
+    private List<Card> discardPile = new ArrayList<>();
 
     @ManyToOne
     private Player currentPlayer;
