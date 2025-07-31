@@ -54,6 +54,55 @@ public class GameService {
         return gameRepository.save(game);
     }
 
+    @Transactional
+    public Game startGame(Long gameId) {
+        Game game =gameRepository.findById(gameId)
+            .orElseThrow(() -> new RuntimeException("Game not found with id: " + gameId));
+
+        //1. Validaciones
+        if (game.getStatus() !=Game.GameStatus.WAITING_FOR_PLAYERS) {
+            throw new IllegalStateException("Game has already started or is finished");
+        }
+
+        if (game.getPlayers().size() <2) {
+            throw new IllegalStateException("Cannot start the game with fewer than 2 players");
+        }
+
+        //2. Cambiar estado de la partida
+        game.setStatus(Game.GameStatus.IN_PROGRESS);
+
+        //3. Repartir 7 cartas a cada jugador
+        List<Card> drawPile = game.getDrawPile();
+        for (Player player : game.getPlayers()) {
+            for (int i = 0; i < 7; i++) {
+                if (drawPile.isEmpty()) {
+                    throw new IllegalStateException("The deck ran out of cards during initial deal.");
+                }
+                player.getHand().add(drawPile.removeLast());
+            }
+        }
+
+        //4. Poner la primera carta en la pila de decarte
+        Card firstCard;
+        do {
+            firstCard = drawPile.removeLast();
+            //Regla oficial: Si la primera carta es un Comodón +4, se devuelve al mazo y se baraja
+            if (firstCard.getValue() == CardValue.WILD_DRAW_FOUR) {
+                drawPile.add(firstCard);
+                Collections.shuffle(drawPile);
+            }
+        } while (firstCard.getValue() == CardValue.WILD_DRAW_FOUR);
+
+        game.getDiscardPile().add(firstCard);
+
+        //TODO: Aplicaar el efecto de la primera carta si es de acción (Saltar, Reversa, +2)
+
+        //5. Establecer el primer jugador
+        game.setCurrentPlayer(game.getPlayers().getFirst());
+
+        return gameRepository.save(game);
+    }
+
     private String generateUniqueGameCode() {
         String code;
         do {

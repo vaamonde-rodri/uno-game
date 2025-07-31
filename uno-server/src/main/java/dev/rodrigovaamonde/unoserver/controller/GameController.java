@@ -35,4 +35,11 @@ public class GameController {
 
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/{gameId}/start")
+    public ResponseEntity<GameResponseDTO> startGame(@PathVariable Long gameId) {
+        Game startedGame = gameService.startGame(gameId);
+        GameResponseDTO response = GameResponseDTO.fromEntity(startedGame);
+        return ResponseEntity.ok(response);
+    }
 }
