@@ -3,6 +3,7 @@ package dev.rodrigovaamonde.unoserver.service;
 import dev.rodrigovaamonde.unoserver.model.*;
 import dev.rodrigovaamonde.unoserver.repository.GameRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -20,6 +21,7 @@ public class GameService {
         this.gameRepository = gameRepository;
     }
 
+    @Transactional
     public Game createGame() {
         String gameCode = generateUniqueGameCode();
         Game game = new Game(gameCode);
@@ -31,12 +33,18 @@ public class GameService {
         return gameRepository.save(game);
     }
 
+    @Transactional
     public Game joinGame(Long gameId, String playerName) {
         Game game = gameRepository.findById(gameId)
             .orElseThrow(() -> new RuntimeException("Game not found with id: " + gameId));
 
-        if (!"LOBBY".equals(game.getStatus())) {
+        if (game.getStatus() != Game.GameStatus.WAITING_FOR_PLAYERS) {
             throw new IllegalStateException("Cannot join a game that is already in progress or finished.");
+        }
+
+        boolean playerExists = game.getPlayers().stream().anyMatch(p -> p.getName().equalsIgnoreCase(playerName));
+        if (playerExists) {
+            throw new IllegalStateException("A player with the name '" + playerName + "' is already in this game");
         }
 
         Player newPlayer = new Player(playerName);
