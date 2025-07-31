@@ -36,6 +36,7 @@ class GameServiceTest {
     /**
      * Crea un mazo de prueba con un número específico de cartas simples.
      * Esto evita la necesidad de llamar al método privado initializeDeck() del servicio.
+     *
      * @param cardCount El número de cartas a crear.
      * @return Una lista de cartas para usar en los tests.
      */
@@ -75,7 +76,7 @@ class GameServiceTest {
     @Test
     void joinGame_shouldNotifyClientsViaWebSocket() {
         Long gameId = 1L;
-        String gameCode ="ABCDEF";
+        String gameCode = "ABCDEF";
         Game game = new Game(gameCode);
         game.setId(gameId);
 
@@ -243,7 +244,8 @@ class GameServiceTest {
         PlayCardRequestDTO request = new PlayCardRequestDTO(notCurrentPlayer.getId(), cardToPlay.getId(), null);
 
         // Act & Assert
-        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> gameService.playCard(game.getGameCode(), request));
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+            () -> gameService.playCard(game.getGameCode(), request));
         assertEquals("It's not your turn to play.", exception.getMessage());
     }
 
@@ -383,27 +385,38 @@ class GameServiceTest {
     }
 
     @Test
-    void drawCard_shouldSucceed_whenNoPlayableCards() {
+    void drawCard_shouldReturnDrawnCard_andNotAdavenceTurn() {
         // Arrange
         Game game = setupInProgressGame();
         Player currentPlayer = game.getCurrentPlayer();
 
         //LE damos al jugador una mano sin cartas
         currentPlayer.getHand().clear();
-        Card unplayableCard= new Card(Color.BLUE, CardValue.ONE);
+        Card unplayableCard = new Card(Color.BLUE, CardValue.ONE);
         unplayableCard.setId(300L);
         currentPlayer.getHand().add(unplayableCard);
 
         int initialHandSize = currentPlayer.getHand().size();
-        Player nextPlayer = game.getPlayers().get(1);
 
-        gameService.drawCard(game.getGameCode(), currentPlayer.getId());
+        Card drawnCard = gameService.drawCard(game.getGameCode(), currentPlayer.getId());
 
         // Assert
+        assertNotNull(drawnCard);
         assertEquals(initialHandSize + 1, currentPlayer.getHand().size());
+        assertEquals(currentPlayer.getId(), game.getCurrentPlayer().getId());
+        verify(messagingTemplate, never()).convertAndSend(anyString(), any(GameResponseDTO.class));
+    }
+
+    @Test
+    void passTurn_shouldAdvanceTurnAndNotify() {
+        Game game = setupInProgressGame();
+        Player currentPlayer = game.getCurrentPlayer();
+        Player nextPlayer = game.getPlayers().get(1); // El siguiente jugador
+
+        gameService.passTurn(game.getGameCode(), currentPlayer.getId());
+
         assertEquals(nextPlayer.getId(), game.getCurrentPlayer().getId());
-        verify(messagingTemplate, times(1))
-            .convertAndSend(anyString(), any(GameResponseDTO.class));
+        verify(messagingTemplate, times(1)).convertAndSend(anyString(), any(GameResponseDTO.class));
     }
 
     @Test
@@ -415,8 +428,10 @@ class GameServiceTest {
         playableCard.setId(300L);
         currentPlayer.getHand().add(playableCard);
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> gameService.drawCard(game.getGameCode(), currentPlayer.getId()));
-        assertEquals("You have playable cards in your hand. You must play a card instead of drawing.", exception.getMessage());
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+            () -> gameService.drawCard(game.getGameCode(), currentPlayer.getId()));
+        assertEquals("You have playable cards in your hand. You must play a card instead of drawing.",
+            exception.getMessage());
     }
 
     @Test
@@ -424,7 +439,8 @@ class GameServiceTest {
         Game game = setupInProgressGame();
         Player notCurrentPlayer = game.getPlayers().get(1); // El segundo jugador
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> gameService.drawCard(game.getGameCode(), notCurrentPlayer.getId()));
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+            () -> gameService.drawCard(game.getGameCode(), notCurrentPlayer.getId()));
         assertEquals("It's not your turn to draw a card.", exception.getMessage());
     }
 }

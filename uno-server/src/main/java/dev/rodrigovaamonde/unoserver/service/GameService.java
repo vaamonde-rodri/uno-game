@@ -161,7 +161,7 @@ public class GameService {
     }
 
     @Transactional
-    public void drawCard(String gameCode, Long playerId) {
+    public Card drawCard(String gameCode, Long playerId) {
         //1. Encontrar la partida y el jugador
         Game game = gameRepository.findByGameCode(gameCode)
             .orElseThrow(() -> new RuntimeException("Game not found with code: " + gameCode));
@@ -184,18 +184,55 @@ public class GameService {
         boolean hasPlayableCard = player.getHand().stream()
             .anyMatch(card -> isCardPlayable(card, topDiscardCard, game.getCurrentColor()));
         if (hasPlayableCard) {
-            throw new IllegalStateException("You have playable cards in your hand. You must play a card instead of drawing.");
+            throw new IllegalStateException(
+                "You have playable cards in your hand. You must play a card instead of drawing.");
         }
 
         //4. Robar una carta del mazo
-        drawCardsForPlayer(game, player, 1);
+        List<Card> drawnCards = drawCardsForPlayer(game, player, 1);
+        if (drawnCards.isEmpty()) {
+            throw new IllegalStateException("No cards left in the draw pile.");
+        }
+        Card drawnCard = drawnCards.getFirst();
 
-        //5. Determinar el siguiente jugador
+        //Guardamos el estado del juego con la nueva mano del jugador
+        gameRepository.save(game);
+
+        return drawnCard;
+    }
+
+    @Transactional
+    public void passTurn(String gameCode, Long playerId) {
+        Game game = gameRepository.findByGameCode(gameCode)
+            .orElseThrow(() -> new RuntimeException("Game not found with code: " + gameCode));
+        Player player = game.getPlayers().stream()
+            .filter(p -> p.getId().equals(playerId))
+            .findFirst()
+            .orElseThrow(() -> new RuntimeException("Player not found with id " + playerId + " in game " + gameCode));
+
+        if (!player.getId().equals(game.getCurrentPlayer().getId())) {
+            throw new IllegalStateException("It's not your turn to pass.");
+        }
+
+        // Simplemente pasamos el turno al siguiente jugador
         game.setCurrentPlayer(determineNextPlayer(game, player, 1));
-
-        //6. Guardar el estado del juego y notificar a los jugadores
+        // Guardamos el estado del juego
         Game updatedGame = gameRepository.save(game);
         notifyGameUpdate(updatedGame);
+    }
+
+    public Game getGame(String gameCode) {
+        return gameRepository.findByGameCode(gameCode)
+            .orElseThrow(() -> new RuntimeException("Game not found with code: " + gameCode));
+    }
+
+    public boolean isCardPlayable(Card cardToPlay, Card topDiscardCard, Color currentColor) {
+        //1. Un comodín (negro) puede jugarse en cualquier momento
+        if (cardToPlay.getColor() == Color.BLACK) return true;
+
+        //2. La caarta coincide con el color activo
+        //3. O la carta coincide en valor con la caarta suerior de la pila de descarte
+        return cardToPlay.getColor() == currentColor || cardToPlay.getValue() == topDiscardCard.getValue();
     }
 
     private void notifyGameUpdate(Game game) {
@@ -253,15 +290,6 @@ public class GameService {
         return deck;
     }
 
-    private boolean isCardPlayable(Card cardToPlay, Card topDiscardCard, Color currentColor) {
-        //1. Un comodín (negro) puede jugarse en cualquier momento
-        if (cardToPlay.getColor() == Color.BLACK) return true;
-
-        //2. La caarta coincide con el color activo
-        //3. O la carta coincide en valor con la caarta suerior de la pila de descarte
-        return cardToPlay.getColor() == currentColor || cardToPlay.getValue() == topDiscardCard.getValue();
-    }
-
     private Player applyCardEffect(Game game, Player currentPlayer, Card playedCard, Color chosenColor) {
         //Primero, se actualiza el color del juego
         if (playedCard.getColor() == Color.BLACK) {
@@ -290,7 +318,7 @@ public class GameService {
                     return determineNextPlayer(game, currentPlayer, 2);
                 }
                 //Con más de 2 jugadores, el turno va al jugador anterior
-                return  determineNextPlayer(game, currentPlayer, 1);
+                return determineNextPlayer(game, currentPlayer, 1);
             case DRAW_TWO:
                 // El siguiente jugador roba dos cartas y pierde su turno
                 drawCardsForPlayer(game, nextPlayer, 2);
@@ -323,8 +351,9 @@ public class GameService {
         return players.get(nextPlayerIndex);
     }
 
-    private void drawCardsForPlayer(Game game, Player player, int numberOfCards) {
+    private List<Card> drawCardsForPlayer(Game game, Player player, int numberOfCards) {
         List<Card> drawPile = game.getDrawPile();
+        List<Card> drawnCards = new ArrayList<>();
 
         for (int i = 0; i < numberOfCards; i++) {
             if (drawPile.isEmpty()) {
@@ -336,8 +365,11 @@ public class GameService {
                     break;
                 }
             }
-            player.getHand().add(drawPile.removeLast());
+            Card card = drawPile.removeLast();
+            player.getHand().add(card);
+            drawnCards.add(card);
         }
+        return drawnCards;
     }
 
     private void reshuffleDiscardPile(Game game) {
