@@ -1,6 +1,7 @@
 package dev.rodrigovaamonde.unoserver.service;
 
 import dev.rodrigovaamonde.unoserver.dto.GameResponseDTO;
+import dev.rodrigovaamonde.unoserver.dto.PlayCardRequestDTO;
 import dev.rodrigovaamonde.unoserver.model.*; // Importar los modelos de cartas
 import dev.rodrigovaamonde.unoserver.repository.GameRepository;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class GameServiceTest {
@@ -195,5 +197,117 @@ class GameServiceTest {
         });
 
         assertEquals("Cannot start the game with fewer than 2 players", exception.getMessage());
+    }
+
+    @Test
+    void playCard_shouldSucceed_whenCardIsValid() {
+        // Arrange
+        Game game = setupInProgressGame();
+        Player currentPlayer = game.getCurrentPlayer();
+        // Le damos al jugador una carta jugable (ROJO_UNO sobre un ROJO_CINCO)
+        Card cardToPlay = new Card(Color.RED, CardValue.ONE);
+        cardToPlay.setId(100L);
+        currentPlayer.getHand().add(cardToPlay);
+
+        PlayCardRequestDTO request = new PlayCardRequestDTO(currentPlayer.getId(), cardToPlay.getId(), null);
+
+        // Act
+        gameService.playCard(game.getGameCode(), request);
+
+        // Assert
+        // La carta jugada ahora está en la pila de descarte
+        assertEquals(cardToPlay.getId(), game.getDiscardPile().getLast().getId());
+        // El jugador tiene una carta menos
+        assertEquals(7, currentPlayer.getHand().size());
+        // El turno ha pasado al siguiente jugador
+        assertNotEquals(currentPlayer.getId(), game.getCurrentPlayer().getId());
+        // El color actual del juego es el de la carta jugada
+        assertEquals(Color.RED, game.getCurrentColor());
+        // Se ha notificado a los clientes
+        verify(messagingTemplate, times(1)).convertAndSend(anyString(), any(GameResponseDTO.class));
+    }
+
+    @Test
+    void playCard_shouldThrowException_whenNotPlayerTurn() {
+        // Arrange
+        Game game = setupInProgressGame();
+        Player notCurrentPlayer = game.getPlayers().get(1); // El segundo jugador
+        Card cardToPlay = new Card(Color.RED, CardValue.ONE);
+        cardToPlay.setId(100L);
+        notCurrentPlayer.getHand().add(cardToPlay);
+
+        PlayCardRequestDTO request = new PlayCardRequestDTO(notCurrentPlayer.getId(), cardToPlay.getId(), null);
+
+        // Act & Assert
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> gameService.playCard(game.getGameCode(), request));
+        assertEquals("It's not your turn to play.", exception.getMessage());
+    }
+
+    @Test
+    void playCard_shouldThrowException_whenCardIsNotPlayable() {
+        // Arrange
+        Game game = setupInProgressGame(); // La carta superior es ROJO_CINCO
+        Player currentPlayer = game.getCurrentPlayer();
+        // Le damos al jugador una carta no jugable (AZUL_UNO)
+        Card cardToPlay = new Card(Color.BLUE, CardValue.ONE);
+        cardToPlay.setId(100L);
+        currentPlayer.getHand().add(cardToPlay);
+
+        PlayCardRequestDTO request = new PlayCardRequestDTO(currentPlayer.getId(), cardToPlay.getId(), null);
+
+        // Act & Assert
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+            () -> gameService.playCard(game.getGameCode(), request));
+        assertTrue(exception.getMessage().startsWith("Card cannot be played on top of"));
+    }
+
+    @Test
+    void playCard_shouldSucceed_withWildCardAndChangeColor() {
+        // Arrange
+        Game game = setupInProgressGame();
+        Player currentPlayer = game.getCurrentPlayer();
+        Card wildCard = new Card(Color.BLACK, CardValue.WILD);
+        wildCard.setId(200L);
+        currentPlayer.getHand().add(wildCard);
+
+        PlayCardRequestDTO request = new PlayCardRequestDTO(currentPlayer.getId(), wildCard.getId(), Color.GREEN);
+
+        // Act
+        gameService.playCard(game.getGameCode(), request);
+
+        // Assert
+        assertEquals(wildCard.getId(), game.getDiscardPile().getLast().getId());
+        // El color del juego ahora es el elegido (VERDE)
+        assertEquals(Color.GREEN, game.getCurrentColor());
+        assertNotEquals(currentPlayer.getId(), game.getCurrentPlayer().getId());
+    }
+
+    /**
+     * Método de ayuda para configurar un juego en progreso para los tests.
+     */
+    private Game setupInProgressGame() {
+        String gameCode = "TEST123";
+        Game game = new Game(gameCode);
+        game.setStatus(Game.GameStatus.IN_PROGRESS);
+
+        // Añadir jugadores con 7 cartas cada uno
+        for (int i = 1; i <= 2; i++) {
+            Player player = new Player("Player " + i);
+            player.setId((long) i);
+            player.setHand(createTestDeck(7));
+            game.addPlayer(player);
+        }
+
+        // Poner una carta inicial en la pila de descarte
+        Card topCard = new Card(Color.RED, CardValue.FIVE);
+        topCard.setId(99L);
+        game.getDiscardPile().add(topCard);
+        game.setCurrentColor(Color.RED);
+        game.setCurrentPlayer(game.getPlayers().getFirst());
+
+        when(gameRepository.findByGameCode(gameCode)).thenReturn(Optional.of(game));
+        lenient().when(gameRepository.save(any(Game.class))).thenReturn(game);
+
+        return game;
     }
 }

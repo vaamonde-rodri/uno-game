@@ -132,7 +132,7 @@ public class GameService {
             .orElseThrow(() -> new RuntimeException("Player not found with id " + request.playerId() + " in game " + gameCode));
 
         Card cardToPlay = player.getHand().stream()
-            .filter(card -> card.getId().equals(request.cardId()))
+            .filter(card -> card.getId() != null && card.getId().equals(request.cardId()))
             .findFirst()
             .orElseThrow(() -> new RuntimeException("Card not found with id " + request.cardId() + " in player's hand"));
 
@@ -152,6 +152,17 @@ public class GameService {
 
         //TODO: Implentar la lógica completa de los efectos de las cartas jugadas
 
+        //5.1. Manejar efectos especiales de las cartas
+        if (cardToPlay.getValue() == CardValue.WILD || cardToPlay.getValue() == CardValue.WILD_DRAW_FOUR) {
+            // Para cartas comodín, cambiar el color del juego al especificado en el request
+            if (request.chosenColor() != null) {
+                game.setCurrentColor(request.chosenColor());
+            }
+        } else {
+            // Para cartas normales, el color actual es el color de la carta jugada
+            game.setCurrentColor(cardToPlay.getColor());
+        }
+
         //6. Determinar el siguiente jugador (lógica simple por ahora)
         int currentPlayerIndex = game.getPlayers().indexOf(game.getCurrentPlayer());
         int nextPlayerIndex = (currentPlayerIndex + 1) % game.getPlayers().size();
@@ -163,6 +174,9 @@ public class GameService {
     }
 
     private void notifyGameUpdate(Game game) {
+        if (game == null) {
+            return;
+        }
         String destination = "/topic/" + game.getGameCode();
         GameResponseDTO gameResponse = GameResponseDTO.fromEntity(game);
         messagingTemplate.convertAndSend(destination, gameResponse);
