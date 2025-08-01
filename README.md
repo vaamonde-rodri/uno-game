@@ -10,184 +10,85 @@ Este proyecto permite a los usuarios crear y unirse a partidas de UNO online, ju
 
 El proyecto está organizado como un **monorepo** con dos módulos principales:
 
-- **Backend (`uno-server`)**: Servidor Spring Boot que actúa como árbitro del juego
-- **Frontend (`uno-client`)**: Aplicación React que proporciona la interfaz de usuario
+- **[Backend (`uno-server`)](./uno-server/README.md)**: Servidor Spring Boot que actúa como árbitro del juego
+- **[Frontend (`uno-client`)](./uno-client/README.md)**: Aplicación React que proporciona la interfaz de usuario
 
-### Arquitectura de Comunicación
-
+### Comunicación
 - **API REST**: Para operaciones básicas (crear partida, unirse, obtener estado)
 - **WebSockets**: Para comunicación en tiempo real durante las partidas
 - **Backend como única fuente de verdad**: Toda la lógica del juego se ejecuta en el servidor
 
-## 🛠️ Stack Tecnológico
+## 🚀 Inicio Rápido
 
-### Backend (uno-server)
-- **Java 21** - Lenguaje de programación
-- **Spring Boot 3.5.4** - Framework principal
-- **Spring Data JPA** - Persistencia de datos
-- **Spring WebSocket** - Comunicación en tiempo real
-- **PostgreSQL** - Base de datos
-- **Lombok** - Reducción de código boilerplate
-- **Gradle** - Gestión de dependencias
+### Prerrequisitos
+- Java 21+
+- Node.js 18+
+- Docker y Docker Compose
 
-### Frontend (uno-client)
-- **TypeScript** - Lenguaje de programación tipado
-- **React 19.1.0** - Framework de UI
-- **Vite 7.0.4** - Herramienta de desarrollo y build
-- **ESLint** - Linter de código
+### Configuración Automática
+```bash
+git clone <repository-url>
+cd uno-game
+./setup.sh
+```
+
+El script configurará automáticamente ambos módulos y iniciará todos los servicios.
+
+### Configuración Manual
+1. **Backend**: Sigue las instrucciones en [`uno-server/README.md`](./uno-server/README.md)
+2. **Frontend**: Sigue las instrucciones en [`uno-client/README.md`](./uno-client/README.md)
 
 ## 📁 Estructura del Proyecto
 
 ```
 uno-game/
-├── README.md
-├── AGENT.md                    # Documentación técnica detallada
-├── uno-server/                 # Backend Spring Boot
-│   ├── src/main/java/dev/rodrigovaamonde/unoserver/
-│   │   ├── config/             # Configuración (WebSocket, Seguridad)
-│   │   ├── controller/         # Controladores REST y WebSocket
-│   │   ├── model/              # Entidades JPA (Game, Player, Card)
-│   │   ├── repository/         # Repositorios Spring Data JPA
-│   │   ├── service/            # Lógica de negocio (reglas del juego)
-│   │   └── UnoServerApplication.java
-│   ├── build.gradle.kts
-│   └── src/main/resources/
-│       └── application.properties
-└── uno-client/                 # Frontend React
-    ├── src/
-    │   ├── components/         # Componentes reutilizables
-    │   ├── pages/              # Vistas principales
-    │   ├── hooks/              # Hooks personalizados
-    │   ├── services/           # Comunicación con backend
-    │   ├── locales/            # Archivos de traducción
-    │   └── App.tsx             # Componente raíz
-    ├── package.json
-    └── vite.config.ts
+├── README.md                   # Documentación general del proyecto
+├── setup.sh                   # Script de configuración automática
+├── docker-compose.yml         # Servicios de infraestructura
+├── WEBSOCKET_API.md           # Documentación API WebSocket
+├── RULES.md                   # Reglas del juego UNO
+├── AGENT.md                   # Documentación técnica para IA
+├── DEPLOYMENT.md              # Guía de despliegue
+├── uno-server/                # Backend Spring Boot
+│   ├── README.md              # Documentación específica del backend
+│   └── ...                    # Código fuente del servidor
+└── uno-client/                # Frontend React
+    ├── README.md              # Documentación específica del frontend
+    └── ...                    # Código fuente del cliente
 ```
 
-## 🚀 Instalación y Configuración
+## 📚 Documentación
 
-### Prerrequisitos
+### 🎮 Para Jugadores
+- **[RULES.md](RULES.md)** - Reglas completas del UNO
 
-- **Java 21** o superior
-- **Node.js** (versión LTS recomendada)
-- **PostgreSQL** (para la base de datos)
-- **Git**
+### 🔧 Para Desarrolladores
+- **[uno-server/README.md](./uno-server/README.md)** - Setup y desarrollo del backend
+- **[uno-client/README.md](./uno-client/README.md)** - Setup y desarrollo del frontend
+- **[WEBSOCKET_API.md](WEBSOCKET_API.md)** - API WebSocket completa
+- **[AGENT.md](AGENT.md)** - Documentación técnica detallada
 
-### Configuración del Backend
+### 🚀 Para DevOps
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Guía de despliegue en producción
 
-1. **Navegar al directorio del servidor:**
-   ```bash
-   cd uno-server
-   ```
+## 🛠️ Stack Tecnológico
 
-2. **Configurar la base de datos:**
-   - Crear una base de datos PostgreSQL
-   - Configurar las credenciales en `src/main/resources/application.properties`
+| Componente | Tecnologías |
+|------------|-------------|
+| **Backend** | Java 21, Spring Boot 3, PostgreSQL, WebSockets |
+| **Frontend** | TypeScript, React 19, Vite |
+| **Infraestructura** | Docker, Docker Compose |
 
-3. **Ejecutar el servidor:**
-   ```bash
-   ./gradlew bootRun
-   ```
+Para más detalles técnicos, consulta la documentación específica de cada módulo.
 
-   El servidor estará disponible en `http://localhost:8080`
-
-### Configuración del Frontend
-
-1. **Navegar al directorio del cliente:**
-   ```bash
-   cd uno-client
-   ```
-
-2. **Instalar dependencias:**
-   ```bash
-   npm install
-   ```
-
-3. **Ejecutar en modo desarrollo:**
-   ```bash
-   npm run dev
-   ```
-
-   La aplicación estará disponible en `http://localhost:5173`
-
-## 🎮 Funcionalidades Implementadas
-
-- ✅ Estructura base del proyecto (monorepo)
-- ✅ Configuración de Spring Boot con WebSockets
-- ✅ Frontend React con TypeScript
-- ✅ Arquitectura preparada para tiempo real
-
-### Funcionalidades Planificadas
-
-- 🚧 Sistema de autenticación de usuarios
-- 🚧 Creación y gestión de salas de juego
-- 🚧 Lógica completa del juego UNO
-- 🚧 Chat en tiempo real durante las partidas
-- 🚧 Sistema de puntuación y estadísticas
-- 🚧 Internacionalización (i18n)
-- 🚧 Interfaz responsive para móviles
-
-## 🎯 Reglas del Juego
-
-Las reglas completas y detalladas del juego se encuentran en el documento [RULES.md](RULES.md).
-
-A continuación, un resumen rápido:
-- **Objetivo:** Ser el primer jugador en quedarse sin cartas.
-- **Mecánica básica:** Jugar una carta que coincida en color, número o símbolo.
-- **Cartas especiales:** Reversa, Salta turno, +2, Comodín y Comodín +4.
-- **Regla "UNO":** Debes anunciar "UNO" cuando te quede una sola carta.
-
-## 🧪 Testing
-
-### Backend
-```bash
-cd uno-server
-./gradlew test
-```
-
-### Frontend
-```bash
-cd uno-client
-npm run test
-```
-
-## 📦 Build de Producción
-
-### Backend
-```bash
-cd uno-server
-./gradlew build
-```
-
-### Frontend
-```bash
-cd uno-client
-npm run build
-```
-
-## 🤝 Contribuciones
-
-Las contribuciones son bienvenidas. Por favor:
+## 🤝 Contribución
 
 1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit tus cambios (`git commit -am 'Añadir nueva funcionalidad'`)
-4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
-5. Crea un Pull Request
+2. Crea tu rama de funcionalidad (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
 
 ## 📄 Licencia
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
-
-## 👨‍💻 Autor
-
-**Rodrigo Vaamonde** - [GitHub](https://github.com/rodrigovaamonde)
-
-## 📚 Documentación Adicional
-
-Para más detalles técnicos sobre la arquitectura y decisiones de diseño, consulta el archivo `AGENT.md`.
-
----
-
-⭐ Si te gusta este proyecto, ¡no olvides darle una estrella!
+Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para detalles.
