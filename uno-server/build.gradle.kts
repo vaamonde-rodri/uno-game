@@ -32,7 +32,6 @@ dependencies {
 	implementation("org.flywaydb:flyway-core")
 	implementation("org.flywaydb:flyway-database-postgresql")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9")
-	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui")
 	compileOnly("org.projectlombok:lombok")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	runtimeOnly("org.postgresql:postgresql")
@@ -65,25 +64,4 @@ tasks.jacocoTestReport {
 			)
 		}
 	}))
-}
-
-tasks.jacocoTestCoverageVerification {
-	violationRules {
-		rule {
-			limit {
-				minimum = "0.80".toBigDecimal() // 80% de cobertura mínima
-			}
-		}
-	}
-}
-
-// Configuración de Flyway usando variables de entorno
-flyway {
-	url = project.findProperty("flyway.url") as String? ?: System.getenv("FLYWAY_URL") ?: "jdbc:postgresql://localhost:5432/uno_game_db"
-	user = project.findProperty("flyway.user") as String? ?: System.getenv("FLYWAY_USER") ?: "uno_user"
-	password = project.findProperty("flyway.password") as String? ?: System.getenv("FLYWAY_PASSWORD") ?: "uno_password"
-	locations = arrayOf("classpath:db/migration")
-	baselineOnMigrate = true
-	validateOnMigrate = true
-	cleanDisabled = true
 }

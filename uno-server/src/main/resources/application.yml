@@ -19,7 +19,7 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: validate  # Usamos 'validate' porque Flyway maneja las migraciones
+      ddl-auto: validate  # Cambiar de vuelta a 'validate' ahora que las tablas existen
     show-sql: false
     properties:
       hibernate:
@@ -34,6 +34,7 @@ spring:
     baseline-on-migrate: true
     validate-on-migrate: true
     clean-disabled: true
+    baseline-version: 0
 
   # Configuración de WebSocket
   websocket:

@@ -3,9 +3,9 @@ spring:
   datasource:
     url: jdbc:h2:mem:uno_game_db
     username: sa
-    password:
+    password: 
     driver-class-name: org.h2.Driver
-
+  
   # Consola H2 para debugging
   h2:
     console:
@@ -13,7 +13,7 @@ spring:
       path: /h2-console
       settings:
         web-allow-others: true
-
+  
   # Configuración JPA/Hibernate para H2
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
@@ -23,7 +23,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
-
+  
   # Deshabilitar Flyway en desarrollo (usamos ddl-auto)
   flyway:
     enabled: false
