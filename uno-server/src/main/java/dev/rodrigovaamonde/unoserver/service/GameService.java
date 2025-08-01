@@ -32,7 +32,7 @@ public class GameService {
         String gameCode = generateUniqueGameCode();
         Game game = new Game(gameCode);
 
-        List<Card> deck = initializeDeck();
+        List<Card> deck = initializeDeck(game);
         Collections.shuffle(deck);
 
         game.setDrawPile(deck);
@@ -87,7 +87,10 @@ public class GameService {
                 if (drawPile.isEmpty()) {
                     throw new IllegalStateException("The deck ran out of cards during initial deal.");
                 }
-                player.getHand().add(drawPile.removeLast());
+                Card card = drawPile.removeLast();
+                card.setDeckGame(null);
+                card.setPlayer(player);
+                player.getHand().add(card);
             }
         }
 
@@ -102,6 +105,8 @@ public class GameService {
             }
         } while (firstCard.getValue() == CardValue.WILD_DRAW_FOUR);
 
+        firstCard.setDeckGame(null);
+        firstCard.setDiscardPileGame(game);
         game.getDiscardPile().add(firstCard);
         game.setCurrentColor(firstCard.getColor());
 
@@ -150,6 +155,8 @@ public class GameService {
 
         //5. Ejecutar la jugada
         player.getHand().remove(cardToPlay);
+        cardToPlay.setPlayer(null);
+        cardToPlay.setDiscardPileGame(game);
         game.getDiscardPile().add(cardToPlay);
 
         //Si el jugador ya no tiene una carta, su estado de "UNO" se resetea
@@ -248,7 +255,7 @@ public class GameService {
             player.setHasDeclaredUno(true);
             //Guardamos el estado del jugador. No es necesario notificar a todos,
             // es un estado "silencioso" que se valida en la siguiente jugada o en un desafío.
-            // Optionalamente, podíamos enviar una notificación específica para un feedback visual.
+            // Optionalmente, podíamos enviar una notificación específica para un feedback visual.
             gameRepository.save(game);
         } else {
             //Optional: Podríamos penalizar al jugador por intentar declarar UNO sin tener una sola carta.
@@ -323,31 +330,48 @@ public class GameService {
         return sb.toString();
     }
 
-    private List<Card> initializeDeck() {
+    private List<Card> initializeDeck(Game game) {
         List<Card> deck = new ArrayList<>();
 
         // Cartas de colores (Rojo, Verde, Azul, Amarillo)
         for (Color color : new Color[]{Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW}) {
             // Una carta de '0' por color
-            deck.add(new Card(color, CardValue.ZERO));
+            Card zeroCard = new Card(color, CardValue.ZERO);
+            zeroCard.setDeckGame(game);
+            deck.add(zeroCard);
 
             // Dos cartas del '1' al '9' por color
             for (CardValue value : new CardValue[]{CardValue.ONE, CardValue.TWO, CardValue.THREE, CardValue.FOUR, CardValue.FIVE, CardValue.SIX, CardValue.SEVEN, CardValue.EIGHT, CardValue.NINE}) {
-                deck.add(new Card(color, value));
-                deck.add(new Card(color, value));
+                Card card1 = new Card(color, value);
+                card1.setDeckGame(game);
+                deck.add(card1);
+
+                Card card2 = new Card(color, value);
+                card2.setDeckGame(game);
+                deck.add(card2);
             }
 
             // Dos cartas de acción por color
             for (CardValue value : new CardValue[]{CardValue.SKIP, CardValue.REVERSE, CardValue.DRAW_TWO}) {
-                deck.add(new Card(color, value));
-                deck.add(new Card(color, value));
+                Card card1 = new Card(color, value);
+                card1.setDeckGame(game);
+                deck.add(card1);
+
+                Card card2 = new Card(color, value);
+                card2.setDeckGame(game);
+                deck.add(card2);
             }
         }
 
         // Cartas comodín (negras)
         IntStream.range(0, 4).forEach(i -> {
-            deck.add(new Card(Color.BLACK, CardValue.WILD));
-            deck.add(new Card(Color.BLACK, CardValue.WILD_DRAW_FOUR));
+            Card wildCard = new Card(Color.BLACK, CardValue.WILD);
+            wildCard.setDeckGame(game);
+            deck.add(wildCard);
+
+            Card wildDrawFourCard = new Card(Color.BLACK, CardValue.WILD_DRAW_FOUR);
+            wildDrawFourCard.setDeckGame(game);
+            deck.add(wildDrawFourCard);
         });
 
         return deck;
@@ -429,6 +453,8 @@ public class GameService {
                 }
             }
             Card card = drawPile.removeLast();
+            card.setDeckGame(null);
+            card.setPlayer(player);
             player.getHand().add(card);
             drawnCards.add(card);
         }
@@ -438,6 +464,13 @@ public class GameService {
     private void reshuffleDiscardPile(Game game) {
         Card topCard = game.getDiscardPile().removeLast(); // Retirar la última carta para no incluirla en el nuevo mazo
         List<Card> newDrawPile = new ArrayList<>(game.getDiscardPile());
+
+        // Actualizar las relaciones de las cartas que van al mazo
+        for (Card card : newDrawPile) {
+            card.setDiscardPileGame(null);
+            card.setDeckGame(game);
+        }
+
         Collections.shuffle(newDrawPile);
         game.setDrawPile(newDrawPile);
         game.getDiscardPile().clear();

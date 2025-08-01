@@ -23,7 +23,7 @@ CHECK (status IN ('WAITING_FOR_PLAYERS', 'IN_PROGRESS', 'FINISHED', 'CANCELLED')
 
 ALTER TABLE cards
 ADD CONSTRAINT chk_card_color
-CHECK (color IN ('RED', 'BLUE', 'GREEN', 'YELLOW', 'WILD'));
+CHECK (color IN ('RED', 'BLUE', 'GREEN', 'YELLOW', 'BLACK'));
 
 ALTER TABLE cards
 ADD CONSTRAINT chk_card_value

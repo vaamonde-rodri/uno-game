@@ -15,7 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/games")
+@RequestMapping("/games")
 @Tag(name = "Game Management", description = "API para crear, unirse y empezar partidas de UNO")
 public class GameController {
     private final GameService gameService;

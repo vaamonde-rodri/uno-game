@@ -27,12 +27,10 @@ public class Game {
     @EqualsAndHashCode.Exclude
     private List<Player> players = new ArrayList<>();
 
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JoinColumn(name = "deck_game_id")
+    @OneToMany(mappedBy = "deckGame", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Card> drawPile = new ArrayList<>();
 
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JoinColumn(name = "discard_pile_game_id")
+    @OneToMany(mappedBy = "discardPileGame", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Card> discardPile = new ArrayList<>();
 
     @ManyToOne
