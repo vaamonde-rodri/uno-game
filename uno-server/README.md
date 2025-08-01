@@ -1,262 +1,171 @@
-# 🎴 UNO Game - Servidor Backend
+# 🎴 UNO Server - Backend
 
-Un servidor backend completo para el juego UNO desarrollado con Spring Boot, PostgreSQL y WebSockets.
+Servidor backend Spring Boot para el juego UNO multijugador en tiempo real.
 
 ## 🚀 Características
 
 - ✅ **API REST** completa para gestión de juegos
-- ✅ **WebSockets** para comunicación en tiempo real
-- ✅ **Base de datos PostgreSQL** con Docker
-- ✅ **Sistema de migraciones** con Flyway
-- ✅ **Documentación automática** con OpenAPI/Swagger
+- ✅ **WebSockets STOMP** para comunicación en tiempo real
+- ✅ **Lógica completa del juego UNO** implementada en el servidor
+- ✅ **Base de datos PostgreSQL** con migraciones automáticas
+- ✅ **Documentación automática** con OpenAPI/Swagger y AsyncAPI
 - ✅ **Perfiles de configuración** (dev, prod, test)
 - ✅ **Cobertura de código** con JaCoCo
+- ✅ **Seguridad** con validación de movimientos en servidor
 
-## 🛠️ Tecnologías
+## 🛠️ Stack Tecnológico
 
-- **Java 21** con Spring Boot 3.5.4
-- **PostgreSQL 16** (producción)
-- **H2 Database** (desarrollo y testing)
-- **Flyway** para migraciones
-- **Docker & Docker Compose** para infraestructura
-- **Gradle** como build tool
-- **Lombok** para reducir boilerplate
-- **JaCoCo** para cobertura de código
+- **Java 21** - Lenguaje base
+- **Spring Boot 3.5.4** - Framework principal
+- **Spring Data JPA** - Persistencia de datos
+- **Spring WebSocket (STOMP)** - Comunicación en tiempo real
+- **PostgreSQL 16** - Base de datos en producción
+- **H2 Database** - Base de datos para desarrollo y testing
+- **Flyway** - Gestión de migraciones de BD
+- **OpenAPI/Swagger** - Documentación API REST
+- **AsyncAPI** - Documentación API WebSocket
+- **Lombok** - Reducción de código boilerplate
+- **Gradle** - Gestión de dependencias y build
+- **JaCoCo** - Análisis de cobertura de código
 
-## 📦 Configuración Rápida
+## 📦 Configuración y Desarrollo
 
 ### Prerrequisitos
 - Java 21+
-- Docker y Docker Compose
-- Git
+- Docker y Docker Compose (para PostgreSQL)
 
-### Instalación Automática
+### Setup Rápido
+
+1. **Desde la raíz del proyecto:**
 ```bash
-# Clonar el repositorio (si aplica)
-git clone <repository-url>
-cd uno-game
-
-# Ejecutar script de configuración automática
+# Esto configura tanto backend como frontend
 ./setup.sh
 ```
 
-### Instalación Manual
-
-1. **Iniciar servicios de base de datos:**
+2. **Solo backend (desde esta carpeta):**
 ```bash
-docker compose up -d
-```
+# Iniciar base de datos
+docker compose -f ../docker-compose.yml up -d
 
-2. **Compilar y ejecutar migraciones:**
-```bash
-cd uno-server
-./gradlew clean build
+# Ejecutar migraciones
 ./gradlew flywayMigrate
-```
 
-3. **Ejecutar el servidor:**
-```bash
-# Modo producción (PostgreSQL)
+# Iniciar servidor
 ./gradlew bootRun
-
-# Modo desarrollo (H2)
-./gradlew bootRun --args='--spring.profiles.active=dev'
 ```
-
-## 🔧 Configuración
-
-### Perfiles Disponibles
-
-#### Producción (por defecto)
-- Base de datos: PostgreSQL
-- Puerto: 8080
-- Migraciones: Habilitadas
-- Logging: INFO
-
-#### Desarrollo (`dev`)
-- Base de datos: H2 (en memoria)
-- Puerto: 8080
-- Consola H2: http://localhost:8080/h2-console
-- Logging: DEBUG
-- DDL: create-drop
-
-#### Testing (`test`)
-- Base de datos: H2 (en memoria)
-- Logging: WARN
-- Perfiles de datos de prueba
 
 ### Variables de Entorno
 
-Para personalizar la configuración, puedes usar estas variables de entorno:
+Para desarrollo local, las configuraciones están en `application-dev.yml`. Para producción:
 
 ```bash
-export DB_HOST=localhost
-export DB_PORT=5432
-export DB_NAME=uno_game_db
-export DB_USERNAME=uno_user
-export DB_PASSWORD=uno_password
-export SERVER_PORT=8080
+export SPRING_DATASOURCE_URL=jdbc:postgresql://host:port/database
+export SPRING_DATASOURCE_USERNAME=username
+export SPRING_DATASOURCE_PASSWORD=password
+export SPRING_PROFILES_ACTIVE=prod
 ```
 
-## 🗄️ Base de Datos
+## 🏗️ Arquitectura del Backend
 
-### Estructura de Tablas
+### Estructura del Código
 
-- **games**: Información de partidas
-- **players**: Jugadores registrados
-- **cards**: Cartas del juego
+```
+src/main/java/dev/rodrigovaamonde/unoserver/
+├── annotation/        # Anotaciones personalizadas para WebSocket
+├── config/            # Configuración (WebSocket, Seguridad, Documentación)
+├── controller/        # Controladores REST y WebSocket
+├── model/             # Entidades JPA (Game, Player, Card)
+├── repository/        # Repositorios Spring Data JPA
+├── service/           # Lógica de negocio y reglas del juego
+└── UnoServerApplication.java
+```
 
-### Migraciones
+### Endpoints Principales
 
-Las migraciones se ejecutan automáticamente con Flyway:
+#### API REST
+- `POST /api/games` - Crear nueva partida
+- `POST /api/games/{gameId}/join` - Unirse a partida
+- `GET /api/games/{gameId}` - Estado de la partida
+
+#### WebSocket STOMP
+- `/app/game/{gameId}/play-card` - Jugar carta
+- `/app/game/{gameId}/draw-card` - Robar carta
+- `/topic/game/{gameId}` - Eventos de juego en tiempo real
+
+### Base de Datos
+
+El servidor usa PostgreSQL en producción y H2 para desarrollo. Las migraciones se gestionan con Flyway:
 
 ```bash
-# Ver estado de migraciones
-./gradlew flywayInfo
-
-# Ejecutar migraciones pendientes
+# Ejecutar migraciones
 ./gradlew flywayMigrate
 
-# Reparar migraciones (si hay errores)
-./gradlew flywayRepair
+# Limpiar base de datos
+./gradlew flywayClean
 ```
 
-## 🌐 API Endpoints
+## 🔧 Desarrollo
 
-### Documentación Interactiva
-- **Swagger UI**: http://localhost:8080/api/swagger-ui.html
-- **OpenAPI JSON**: http://localhost:8080/api/api-docs
+### Comandos Útiles
 
-### Principales Endpoints
+```bash
+# Compilar
+./gradlew build
 
+# Ejecutar tests
+./gradlew test
+
+# Generar reporte de cobertura
+./gradlew jacocoTestReport
+
+# Ejecutar con hot reload
+./gradlew bootRun
+
+# Generar JAR
+./gradlew bootJar
 ```
-GET    /api/games              # Listar juegos
-POST   /api/games              # Crear nuevo juego
-GET    /api/games/{id}          # Obtener juego específico
-POST   /api/games/{id}/join     # Unirse a juego
-POST   /api/games/{id}/start    # Iniciar juego
-POST   /api/games/{id}/play     # Jugar carta
-```
 
-### WebSocket
-- **Endpoint**: `/ws`
-- **Destinos**:
-  - `/topic/game/{gameId}` - Actualizaciones del juego
-  - `/app/game/{gameId}/action` - Enviar acciones
+### Perfiles de Configuración
 
-## 🧪 Testing
+- **dev** - Desarrollo local con H2
+- **prod** - Producción con PostgreSQL
+- **test** - Testing con H2 en memoria
+
+### Testing
 
 ```bash
 # Ejecutar todos los tests
 ./gradlew test
 
-# Ejecutar tests con cobertura
-./gradlew jacocoTestReport
+# Ejecutar tests específicos
+./gradlew test --tests "*GameServiceTest*"
 
 # Ver reporte de cobertura
 open build/reports/jacoco/test/html/index.html
 ```
 
-## 🐳 Docker
+## 📋 Documentación de APIs
 
-### Servicios Disponibles
+Cuando el servidor esté ejecutándose:
 
-- **PostgreSQL**: Puerto 5432
-- **PgAdmin**: http://localhost:5050
+- **Swagger UI**: http://localhost:8080/swagger-ui.html
+- **OpenAPI JSON**: http://localhost:8080/v3/api-docs
+- **AsyncAPI Spec**: http://localhost:8080/api/docs/asyncapi
+- **WebSocket Docs**: http://localhost:8080/api/docs/websocket
 
-### Comandos Útiles
+También consulta [`../WEBSOCKET_API.md`](../WEBSOCKET_API.md) para ejemplos detallados de uso.
 
-```bash
-# Iniciar servicios
-docker compose up -d
+## 🐛 Logs y Debugging
 
-# Ver logs
-docker compose logs postgres
+Los logs se configuran en `application.yml`. Para desarrollo:
 
-# Acceder a PostgreSQL
-docker compose exec postgres psql -U uno_user -d uno_game_db
-
-# Detener servicios
-docker compose down
-
-# Limpiar volúmenes
-docker compose down -v
+```yaml
+logging:
+  level:
+    dev.rodrigovaamonde.unoserver: DEBUG
+    org.springframework.web.socket: DEBUG
 ```
-
-## 📊 Monitoreo
-
-### Actuator Endpoints
-- `/api/actuator/health` - Estado de la aplicación
-- `/api/actuator/info` - Información de la aplicación
-- `/api/actuator/metrics` - Métricas de rendimiento
-
-### Logging
-Los logs se escriben en la consola con formato personalizado:
-```
-2024-01-01 12:00:00 - [INFO] - Aplicación iniciada correctamente
-```
-
-## 🔒 Seguridad
-
-### Configuraciones de Seguridad
-- CORS configurado para desarrollo
-- Validación de entrada en todos los endpoints
-- Sanitización de datos de usuario
-- Rate limiting en endpoints críticos
 
 ## 🚀 Despliegue
 
-### Variables de Entorno para Producción
-```bash
-SPRING_PROFILES_ACTIVE=prod
-SPRING_DATASOURCE_URL=jdbc:postgresql://your-db-host:5432/uno_game_db
-SPRING_DATASOURCE_USERNAME=your-username
-SPRING_DATASOURCE_PASSWORD=your-password
-```
-
-### Docker en Producción
-```bash
-# Construir imagen
-docker build -t uno-server .
-
-# Ejecutar contenedor
-docker run -p 8080:8080 \
-  -e SPRING_PROFILES_ACTIVE=prod \
-  -e SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/uno_game_db \
-  uno-server
-```
-
-## 🤝 Contribución
-
-1. Fork el proyecto
-2. Crea una branch para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la branch (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
-## 📝 Notas de Desarrollo
-
-### Reglas de Negocio
-- Máximo 4 jugadores por partida
-- Mínimo 2 jugadores para iniciar
-- Cartas especiales tienen efectos específicos
-- Sistema de penalizaciones por no declarar UNO
-
-### Patrones Utilizados
-- **Repository Pattern** para acceso a datos
-- **DTO Pattern** para transferencia de datos
-- **Service Layer** para lógica de negocio
-- **WebSocket** para comunicación en tiempo real
-
-## 📞 Soporte
-
-Si encuentras algún problema:
-
-1. Revisa los logs: `docker compose logs`
-2. Verifica la base de datos: http://localhost:5050
-3. Consulta la documentación API: http://localhost:8080/api/swagger-ui.html
-4. Ejecuta los tests: `./gradlew test`
-
----
-
-**¡Disfruta jugando UNO! 🎉**
+Para instrucciones de despliegue en producción, consulta [`../DEPLOYMENT.md`](../DEPLOYMENT.md).
