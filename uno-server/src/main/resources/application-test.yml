@@ -1,0 +1,34 @@
+spring:
+  # Configuración para testing con H2
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  # JPA para testing
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  # Deshabilitar Flyway en tests
+  flyway:
+    enabled: false
+
+  # Configuración de testing
+  test:
+    database:
+      replace: none
+
+# Logging mínimo para tests
+logging:
+  level:
+    dev.rodrigovaamonde.unoserver: WARN
+    org.springframework: WARN
+    org.hibernate: WARN
+    org.flywaydb: WARN
