@@ -1,5 +1,8 @@
 package dev.rodrigovaamonde.unoserver.controller;
 
+import dev.rodrigovaamonde.unoserver.annotation.WebSocketOperation;
+import dev.rodrigovaamonde.unoserver.annotation.WebSocketParam;
+import dev.rodrigovaamonde.unoserver.annotation.WebSocketResponse;
 import dev.rodrigovaamonde.unoserver.dto.*;
 import dev.rodrigovaamonde.unoserver.model.Card;
 import dev.rodrigovaamonde.unoserver.model.Game;
@@ -25,15 +28,32 @@ public class GameWebSocketController {
         this.messagingTemplate = messagingTemplate;
     }
 
-    /**
-     * Se activa cuando un cliente envía un mensaje a "/app/game/{gameCode}/play-card".
-     *
-     * @param gameCode El código de la partida, extraído de la URL del destino.
-     * @param request  El payload con los detalles de la jugada.
-     */
+    @WebSocketOperation(
+        summary = "Jugar una carta",
+        description = "Permite a un jugador jugar una carta de su mano. La carta debe ser válida según las reglas del UNO.",
+        destination = "/app/game/{gameCode}/play-card",
+        responseChannels = {"/topic/game/{gameCode}/state"},
+        tags = {"Gameplay", "Cards"}
+    )
+    @WebSocketResponse(
+        channel = "/topic/game/{gameCode}/state",
+        description = "Estado actualizado del juego enviado a todos los jugadores",
+        content = GameResponseDTO.class,
+        broadcast = true
+    )
     @MessageMapping("/game/{gameCode}/play-card")
     public void playCard(
+        @WebSocketParam(
+            name = "gameCode",
+            description = "Código único de 6 caracteres que identifica la partida",
+            example = "ABC123"
+        )
         @DestinationVariable String gameCode,
+
+        @WebSocketParam(
+            name = "request",
+            description = "Datos de la carta a jugar incluyendo ID del jugador y carta"
+        )
         @Payload PlayCardRequestDTO request
     ) {
         try {
@@ -45,15 +65,32 @@ public class GameWebSocketController {
         }
     }
 
-    /**
-     * Se activa cuando un cliente envía un mensaje a "/app/game/{gameCode}/draw-card".
-     *
-     * @param gameCode El código de la partida, extraído de la URL del destino.
-     * @param request  El payload con los detalles de la solicitud de robar una carta.
-     */
+    @WebSocketOperation(
+        summary = "Robar una carta",
+        description = "Permite a un jugador robar una carta del mazo cuando no puede o no quiere jugar.",
+        destination = "/app/game/{gameCode}/draw-card",
+        responseChannels = {"/queue/game/{gameCode}/drawn-card", "/topic/game/{gameCode}/state"},
+        tags = {"Gameplay", "Cards"}
+    )
+    @WebSocketResponse(
+        channel = "/queue/game/{gameCode}/drawn-card",
+        description = "Carta robada enviada privadamente al jugador",
+        content = DrawnCardDTO.class,
+        broadcast = false
+    )
     @MessageMapping("/game/{gameCode}/draw-card")
     public void drawCard(
+        @WebSocketParam(
+            name = "gameCode",
+            description = "Código único de 6 caracteres que identifica la partida",
+            example = "ABC123"
+        )
         @DestinationVariable String gameCode,
+
+        @WebSocketParam(
+            name = "request",
+            description = "Solicitud que contiene el ID del jugador que quiere robar"
+        )
         @Payload DrawCardRequestDTO request,
         Principal principal
     ) {
@@ -78,9 +115,32 @@ public class GameWebSocketController {
         }
     }
 
+    @WebSocketOperation(
+        summary = "Pasar turno",
+        description = "Permite a un jugador pasar su turno sin jugar una carta.",
+        destination = "/app/game/{gameCode}/pass-turn",
+        responseChannels = {"/topic/game/{gameCode}/state"},
+        tags = {"Gameplay", "Turn Management"}
+    )
+    @WebSocketResponse(
+        channel = "/topic/game/{gameCode}/state",
+        description = "Estado actualizado del juego con el turno pasado al siguiente jugador",
+        content = GameResponseDTO.class,
+        broadcast = true
+    )
     @MessageMapping("/game/{gameCode}/pass-turn")
     public void passTurn(
+        @WebSocketParam(
+            name = "gameCode",
+            description = "Código único de 6 caracteres que identifica la partida",
+            example = "ABC123"
+        )
         @DestinationVariable String gameCode,
+
+        @WebSocketParam(
+            name = "request",
+            description = "Acción del jugador que contiene su ID"
+        )
         @Payload PlayerActionDTO request
     ) {
         try {
@@ -90,9 +150,32 @@ public class GameWebSocketController {
         }
     }
 
+    @WebSocketOperation(
+        summary = "Declarar UNO",
+        description = "Permite a un jugador declarar UNO cuando le queda una sola carta.",
+        destination = "/app/game/{gameCode}/declare-uno",
+        responseChannels = {"/topic/game/{gameCode}/state"},
+        tags = {"Gameplay", "UNO Rules"}
+    )
+    @WebSocketResponse(
+        channel = "/topic/game/{gameCode}/state",
+        description = "Estado actualizado del juego mostrando que el jugador declaró UNO",
+        content = GameResponseDTO.class,
+        broadcast = true
+    )
     @MessageMapping("/game/{gameCode}/declare-uno")
     public void declareUno(
+        @WebSocketParam(
+            name = "gameCode",
+            description = "Código único de 6 caracteres que identifica la partida",
+            example = "ABC123"
+        )
         @DestinationVariable String gameCode,
+
+        @WebSocketParam(
+            name = "request",
+            description = "Acción del jugador que contiene su ID"
+        )
         @Payload PlayerActionDTO request
     ) {
         try {
@@ -103,9 +186,32 @@ public class GameWebSocketController {
         }
     }
 
+    @WebSocketOperation(
+        summary = "Desafiar UNO",
+        description = "Permite a un jugador desafiar a otro jugador que declaró UNO, si considera que no tenía una sola carta.",
+        destination = "/app/game/{gameCode}/challenge-uno",
+        responseChannels = {"/topic/game/{gameCode}/state"},
+        tags = {"Gameplay", "UNO Rules"}
+    )
+    @WebSocketResponse(
+        channel = "/topic/game/{gameCode}/state",
+        description = "Estado actualizado del juego mostrando el resultado del desafío de UNO",
+        content = GameResponseDTO.class,
+        broadcast = true
+    )
     @MessageMapping("/game/{gameCode}/challenge-uno")
     public void challengeUno(
+        @WebSocketParam(
+            name = "gameCode",
+            description = "Código único de 6 caracteres que identifica la partida",
+            example = "ABC123"
+        )
         @DestinationVariable String gameCode,
+
+        @WebSocketParam(
+            name = "request",
+            description = "Datos del desafío incluyendo ID del jugador que desafía y el jugador desafiado"
+        )
         @Payload ChallengeUnoRequestDTO request
     ) {
         try {

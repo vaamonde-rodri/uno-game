@@ -1,0 +1,233 @@
+asyncapi: 3.0.0
+info:
+  title: UNO Game WebSocket API
+  version: '1.0.0'
+  description: |
+    API WebSocket para el juego UNO que permite comunicación en tiempo real 
+    entre jugadores durante las partidas.
+
+servers:
+  development:
+    host: localhost:8080
+    protocol: ws
+    description: Servidor de desarrollo
+
+channels:
+  /app/game/{gameCode}/play-card:
+    address: /app/game/{gameCode}/play-card
+    messages:
+      playCard:
+        $ref: '#/components/messages/PlayCardRequest'
+    parameters:
+      gameCode:
+        description: Código único de la partida
+        schema:
+          type: string
+          pattern: '^[A-Z0-9]{6}$'
+
+  /app/game/{gameCode}/draw-card:
+    address: /app/game/{gameCode}/draw-card
+    messages:
+      drawCard:
+        $ref: '#/components/messages/DrawCardRequest'
+    parameters:
+      gameCode:
+        description: Código único de la partida
+        schema:
+          type: string
+          pattern: '^[A-Z0-9]{6}$'
+
+  /app/game/{gameCode}/pass-turn:
+    address: /app/game/{gameCode}/pass-turn
+    messages:
+      passTurn:
+        $ref: '#/components/messages/PlayerAction'
+    parameters:
+      gameCode:
+        description: Código único de la partida
+        schema:
+          type: string
+          pattern: '^[A-Z0-9]{6}$'
+
+  /app/game/{gameCode}/declare-uno:
+    address: /app/game/{gameCode}/declare-uno
+    messages:
+      declareUno:
+        $ref: '#/components/messages/PlayerAction'
+    parameters:
+      gameCode:
+        description: Código único de la partida
+        schema:
+          type: string
+          pattern: '^[A-Z0-9]{6}$'
+
+  /topic/game/{gameCode}/state:
+    address: /topic/game/{gameCode}/state
+    messages:
+      gameStateUpdate:
+        $ref: '#/components/messages/GameStateUpdate'
+    parameters:
+      gameCode:
+        description: Código único de la partida
+        schema:
+          type: string
+          pattern: '^[A-Z0-9]{6}$'
+
+  /queue/game/{gameCode}/drawn-card:
+    address: /queue/game/{gameCode}/drawn-card
+    messages:
+      drawnCard:
+        $ref: '#/components/messages/DrawnCardResponse'
+    parameters:
+      gameCode:
+        description: Código único de la partida
+        schema:
+          type: string
+          pattern: '^[A-Z0-9]{6}$'
+
+components:
+  messages:
+    PlayCardRequest:
+      name: PlayCardRequest
+      title: Solicitud para jugar una carta
+      summary: Mensaje enviado cuando un jugador quiere jugar una carta
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/PlayCardRequestDTO'
+
+    DrawCardRequest:
+      name: DrawCardRequest
+      title: Solicitud para robar una carta
+      summary: Mensaje enviado cuando un jugador quiere robar una carta del mazo
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/DrawCardRequestDTO'
+
+    PlayerAction:
+      name: PlayerAction
+      title: Acción de jugador
+      summary: Mensaje genérico para acciones de jugador (pasar turno, declarar UNO)
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/PlayerActionDTO'
+
+    GameStateUpdate:
+      name: GameStateUpdate
+      title: Actualización del estado del juego
+      summary: Mensaje enviado a todos los jugadores cuando el estado del juego cambia
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/GameResponseDTO'
+
+    DrawnCardResponse:
+      name: DrawnCardResponse
+      title: Respuesta de carta robada
+      summary: Mensaje privado enviado al jugador que robó una carta
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/DrawnCardDTO'
+
+  schemas:
+    PlayCardRequestDTO:
+      type: object
+      properties:
+        playerId:
+          type: string
+          description: ID único del jugador
+        cardId:
+          type: string
+          description: ID de la carta a jugar
+        chosenColor:
+          type: string
+          enum: [RED, BLUE, GREEN, YELLOW]
+          description: Color elegido para cartas comodín (opcional)
+      required:
+        - playerId
+        - cardId
+
+    DrawCardRequestDTO:
+      type: object
+      properties:
+        playerId:
+          type: string
+          description: ID único del jugador
+      required:
+        - playerId
+
+    PlayerActionDTO:
+      type: object
+      properties:
+        playerId:
+          type: string
+          description: ID único del jugador
+      required:
+        - playerId
+
+    GameResponseDTO:
+      type: object
+      properties:
+        gameCode:
+          type: string
+          description: Código de la partida
+        status:
+          type: string
+          enum: [WAITING_PLAYERS, IN_PROGRESS, FINISHED]
+          description: Estado actual del juego
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerDTO'
+        currentPlayerId:
+          type: string
+          description: ID del jugador actual
+        direction:
+          type: string
+          enum: [CLOCKWISE, COUNTERCLOCKWISE]
+          description: Dirección del juego
+        lastPlayedCard:
+          $ref: '#/components/schemas/CardDTO'
+        currentColor:
+          type: string
+          enum: [RED, BLUE, GREEN, YELLOW]
+          description: Color actual del juego
+        deckSize:
+          type: integer
+          description: Número de cartas restantes en el mazo
+
+    DrawnCardDTO:
+      type: object
+      properties:
+        card:
+          $ref: '#/components/schemas/CardDTO'
+        isPlayable:
+          type: boolean
+          description: Indica si la carta robada se puede jugar inmediatamente
+
+    PlayerDTO:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        cardCount:
+          type: integer
+          description: Número de cartas en la mano del jugador
+        hasCalledUno:
+          type: boolean
+          description: Si el jugador ha declarado UNO
+
+    CardDTO:
+      type: object
+      properties:
+        id:
+          type: string
+        color:
+          type: string
+          enum: [RED, BLUE, GREEN, YELLOW, WILD]
+        type:
+          type: string
+          enum: [NUMBER, SKIP, REVERSE, DRAW_TWO, WILD, WILD_DRAW_FOUR]
+        value:
+          type: string
+          description: Valor numérico para cartas NUMBER (0-9)
