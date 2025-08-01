@@ -68,8 +68,8 @@ class WebSocketService {
 
     this.gameCode = gameCode;
 
-    // Suscribirse al estado del juego
-    this.client.subscribe(`/topic/game/${gameCode}`, (message: IMessage) => {
+    // Suscribirse al estado del juego - usar la misma ruta que el servidor
+    this.client.subscribe(`/topic/${gameCode}`, (message: IMessage) => {
       try {
         const gameState: GameResponseDTO = JSON.parse(message.body);
         onGameUpdate(gameState);
