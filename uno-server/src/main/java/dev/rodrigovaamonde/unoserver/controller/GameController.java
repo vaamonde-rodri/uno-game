@@ -4,12 +4,19 @@ import dev.rodrigovaamonde.unoserver.dto.GameResponseDTO;
 import dev.rodrigovaamonde.unoserver.dto.JoinGameRequestDTO;
 import dev.rodrigovaamonde.unoserver.model.Game;
 import dev.rodrigovaamonde.unoserver.service.GameService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/games")
+@Tag(name = "Game Management", description = "API para crear, unirse y empezar partidas de UNO")
 public class GameController {
     private final GameService gameService;
 
@@ -17,6 +24,11 @@ public class GameController {
         this.gameService = gameService;
     }
 
+    @Operation(summary = "Crear una nueva partida", description = "Crea una nueva sala de juego y devuelve su estado inicial.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Partida creada exitosamente",
+            content = { @Content(mediaType = "application/json", schema = @Schema(implementation = GameResponseDTO.class)) })
+    })
     @PostMapping
     public ResponseEntity<GameResponseDTO> createGame() {
         Game newGame = gameService.createGame();
@@ -24,6 +36,13 @@ public class GameController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
+    @Operation(summary = "Unirse a una partida existente", description = "Permite a un jugador unirse a una partida que está esperando jugadores.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Jugador unido exitosamente",
+            content = { @Content(mediaType = "application/json", schema = @Schema(implementation = GameResponseDTO.class)) }),
+        @ApiResponse(responseCode = "400", description = "Petición inválida (ej. nombre de jugador ya existe o la partida ya empezó)"),
+        @ApiResponse(responseCode = "404", description = "Partida no encontrada")
+    })
     @PostMapping("/{gameId}/join")
     public ResponseEntity<GameResponseDTO> joinGame(
         @PathVariable Long gameId,
@@ -36,6 +55,13 @@ public class GameController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Iniciar una partida", description = "Inicia una partida que tiene suficientes jugadores. Reparte las cartas y establece el primer turno.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Partida iniciada exitosamente",
+            content = { @Content(mediaType = "application/json", schema = @Schema(implementation = GameResponseDTO.class)) }),
+        @ApiResponse(responseCode = "400", description = "No se puede iniciar la partida (ej. no hay suficientes jugadores)"),
+        @ApiResponse(responseCode = "404", description = "Partida no encontrada")
+    })
     @PostMapping("/{gameId}/start")
     public ResponseEntity<GameResponseDTO> startGame(@PathVariable Long gameId) {
         Game startedGame = gameService.startGame(gameId);
