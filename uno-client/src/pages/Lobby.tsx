@@ -29,11 +29,10 @@ export function Lobby({ onGameStart }: LobbyProps) {
     }
 
     try {
-      await createGame();
-      // Después de crear la partida, unirse automáticamente
-      if (game?.gameCode) {
-        await joinGame(game.gameCode, playerName);
-        // Obtener el ID del jugador de la respuesta
+      await createGame(playerName);
+      // Ahora la partida ya incluye al jugador creador automáticamente
+      // Solo necesitamos obtener el ID del jugador de la respuesta
+      if (game?.players) {
         const player = game.players.find(p => p.name === playerName);
         if (player) {
           setCurrentPlayerId(player.id);

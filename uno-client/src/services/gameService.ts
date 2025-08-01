@@ -14,8 +14,8 @@ class GameService {
   /**
    * Crear una nueva partida
    */
-  async createGame(): Promise<GameResponseDTO> {
-    const response = await this.api.post<GameResponseDTO>('/games');
+  async createGame(playerName: string): Promise<GameResponseDTO> {
+    const response = await this.api.post<GameResponseDTO>('/games', { playerName });
     return response.data;
   }
 

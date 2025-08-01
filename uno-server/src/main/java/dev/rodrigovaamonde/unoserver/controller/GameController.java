@@ -24,14 +24,14 @@ public class GameController {
         this.gameService = gameService;
     }
 
-    @Operation(summary = "Crear una nueva partida", description = "Crea una nueva sala de juego y devuelve su estado inicial.")
+    @Operation(summary = "Crear una nueva partida", description = "Crea una nueva sala de juego y automáticamente añade al jugador creador.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Partida creada exitosamente",
             content = { @Content(mediaType = "application/json", schema = @Schema(implementation = GameResponseDTO.class)) })
     })
     @PostMapping
-    public ResponseEntity<GameResponseDTO> createGame() {
-        Game newGame = gameService.createGame();
+    public ResponseEntity<GameResponseDTO> createGame(@RequestBody JoinGameRequestDTO request) {
+        Game newGame = gameService.createGameWithPlayer(request.playerName());
         GameResponseDTO response = GameResponseDTO.fromEntity(newGame);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }

@@ -40,6 +40,28 @@ public class GameService {
     }
 
     @Transactional
+    public Game createGameWithPlayer(String playerName) {
+        // Validar que el nombre del jugador no esté vacío
+        if (playerName == null || playerName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Player name cannot be empty");
+        }
+
+        String gameCode = generateUniqueGameCode();
+        Game game = new Game(gameCode);
+
+        List<Card> deck = initializeDeck(game);
+        Collections.shuffle(deck);
+
+        game.setDrawPile(deck);
+
+        // Crear y añadir el jugador creador automáticamente
+        Player creator = new Player(playerName.trim());
+        game.addPlayer(creator);
+
+        return gameRepository.save(game);
+    }
+
+    @Transactional
     public Game joinGame(Long gameId, String playerName) {
         Game game = gameRepository.findById(gameId)
             .orElseThrow(() -> new RuntimeException("Game not found with id: " + gameId));
@@ -345,7 +367,7 @@ public class GameService {
                 Card card1 = new Card(color, value);
                 card1.setDeckGame(game);
                 deck.add(card1);
-
+                
                 Card card2 = new Card(color, value);
                 card2.setDeckGame(game);
                 deck.add(card2);
@@ -356,7 +378,7 @@ public class GameService {
                 Card card1 = new Card(color, value);
                 card1.setDeckGame(game);
                 deck.add(card1);
-
+                
                 Card card2 = new Card(color, value);
                 card2.setDeckGame(game);
                 deck.add(card2);
@@ -368,7 +390,7 @@ public class GameService {
             Card wildCard = new Card(Color.BLACK, CardValue.WILD);
             wildCard.setDeckGame(game);
             deck.add(wildCard);
-
+            
             Card wildDrawFourCard = new Card(Color.BLACK, CardValue.WILD_DRAW_FOUR);
             wildDrawFourCard.setDeckGame(game);
             deck.add(wildDrawFourCard);

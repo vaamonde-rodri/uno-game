@@ -12,7 +12,7 @@ interface UseGameReturn {
   error: string | null;
 
   // Acciones del juego
-  createGame: () => Promise<void>;
+  createGame: (playerName: string) => Promise<void>;
   joinGame: (gameCode: string, playerName: string) => Promise<void>;
   playCard: (card: CardDTO, colorChosen?: string) => Promise<void>;
   drawCard: () => Promise<void>;
@@ -74,11 +74,11 @@ export function useGame(playerId?: number): UseGameReturn {
   };
 
   // Crear nueva partida
-  const createGame = useCallback(async () => {
+  const createGame = useCallback(async (playerName: string) => {
     setLoading(true);
     setError(null);
     try {
-      const newGame = await gameService.createGame();
+      const newGame = await gameService.createGame(playerName);
       setGame(newGame);
     } catch (err) {
       handleError(err);
