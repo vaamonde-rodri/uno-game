@@ -29,14 +29,11 @@ export function Lobby({ onGameStart }: LobbyProps) {
     }
 
     try {
-      await createGame(playerName);
-      // Ahora la partida ya incluye al jugador creador automáticamente
-      // Solo necesitamos obtener el ID del jugador de la respuesta
-      if (game?.players) {
-        const player = game.players.find(p => p.name === playerName);
-        if (player) {
-          setCurrentPlayerId(player.id);
-        }
+      const createdGame = await createGame(playerName);
+      // Obtener el ID del jugador de la respuesta directa
+      const player = createdGame.players.find(p => p.name === playerName);
+      if (player) {
+        setCurrentPlayerId(player.id);
       }
     } catch (err) {
       console.error('Error creando partida:', err);
@@ -77,7 +74,10 @@ export function Lobby({ onGameStart }: LobbyProps) {
     }
   };
 
-  const canStartGame = game && game.players.length >= 2 && game.status === GameStatus.WAITING_FOR_PLAYERS;
+  const canStartGame = game &&
+      game.players.length >= 2 &&
+      game.status === GameStatus.WAITING_FOR_PLAYERS &&
+      game.createdById === currentPlayerId;
 
   if (!connected) {
     return (
@@ -168,6 +168,7 @@ export function Lobby({ onGameStart }: LobbyProps) {
                 >
                   <span className="lobby__player-name">{player.name}</span>
                   {player.id === currentPlayerId && <span className="lobby__player-badge">Tú</span>}
+                  {player.id === game.createdById && <span className="lobby__player-badge lobby__player-badge--host">👑 Host</span>}
                 </div>
               ))}
             </div>

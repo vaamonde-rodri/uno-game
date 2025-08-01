@@ -45,6 +45,11 @@ public class Game {
     @Enumerated(EnumType.STRING)
     private Color currentColor;
 
+    @ManyToOne
+    @JoinColumn(name = "created_by_player_id")
+    @ToString.Exclude
+    private Player createdBy;
+
     public enum GameStatus {
         WAITING_FOR_PLAYERS,
         IN_PROGRESS,

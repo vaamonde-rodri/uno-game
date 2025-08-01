@@ -12,7 +12,7 @@ interface UseGameReturn {
   error: string | null;
 
   // Acciones del juego
-  createGame: (playerName: string) => Promise<void>;
+  createGame: (playerName: string) => Promise<GameResponseDTO>;
   joinGame: (gameCode: string, playerName: string) => Promise<GameResponseDTO>;
   playCard: (card: CardDTO, colorChosen?: string) => Promise<void>;
   drawCard: () => Promise<void>;
@@ -80,8 +80,10 @@ export function useGame(playerId?: number): UseGameReturn {
     try {
       const newGame = await gameService.createGame(playerName);
       setGame(newGame);
+      return newGame; // Devolver la partida actualizada
     } catch (err) {
       handleError(err);
+      throw err; // Re-lanzar el error para que el componente pueda manejarlo
     } finally {
       setLoading(false);
     }
@@ -145,19 +147,19 @@ export function useGame(playerId?: number): UseGameReturn {
 
   // Iniciar partida
   const startGame = useCallback(async () => {
-    if (!game) return;
+    if (!game || !playerId) return;
 
     setLoading(true);
     setError(null);
     try {
-      await gameService.startGame(game.gameCode);
+      await gameService.startGame(game.gameCode, playerId);
       // El estado se actualizará vía WebSocket
     } catch (err) {
       handleError(err);
     } finally {
       setLoading(false);
     }
-  }, [game]);
+  }, [game, playerId]);
 
   return {
     game,

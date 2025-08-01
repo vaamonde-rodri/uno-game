@@ -58,6 +58,9 @@ public class GameService {
         Player creator = new Player(playerName.trim());
         game.addPlayer(creator);
 
+        // Establecer al creador de la partida
+        game.setCreatedBy(creator);
+
         return gameRepository.save(game);
     }
 
@@ -168,7 +171,7 @@ public class GameService {
     }
 
     @Transactional
-    public Game startGameByCode(String gameCode) {
+    public Game startGameByCode(String gameCode, Long playerId) {
         Game game = gameRepository.findByGameCode(gameCode)
             .orElseThrow(() -> new RuntimeException("Game not found with code: " + gameCode));
 
@@ -179,6 +182,11 @@ public class GameService {
 
         if (game.getPlayers().size() < 2) {
             throw new IllegalStateException("Cannot start the game with fewer than 2 players.");
+        }
+
+        // Validar que solo el creador puede iniciar la partida
+        if (game.getCreatedBy() == null || !game.getCreatedBy().getId().equals(playerId)) {
+            throw new IllegalStateException("Only the game creator can start the game.");
         }
 
         //2. Cambiar estado de la partida

@@ -54,8 +54,8 @@ class GameService {
   /**
    * Iniciar una partida
    */
-  async startGame(gameCode: string): Promise<GameResponseDTO> {
-    const response = await this.api.post<GameResponseDTO>(`/games/${gameCode}/start`);
+  async startGame(gameCode: string, playerId: number): Promise<GameResponseDTO> {
+    const response = await this.api.post<GameResponseDTO>(`/games/${gameCode}/start`, { playerId });
     return response.data;
   }
 }

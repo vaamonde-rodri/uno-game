@@ -2,6 +2,7 @@ package dev.rodrigovaamonde.unoserver.controller;
 
 import dev.rodrigovaamonde.unoserver.dto.GameResponseDTO;
 import dev.rodrigovaamonde.unoserver.dto.JoinGameRequestDTO;
+import dev.rodrigovaamonde.unoserver.dto.StartGameRequestDTO;
 import dev.rodrigovaamonde.unoserver.model.Game;
 import dev.rodrigovaamonde.unoserver.service.GameService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -74,11 +75,15 @@ public class GameController {
         @ApiResponse(responseCode = "200", description = "Partida iniciada exitosamente",
             content = { @Content(mediaType = "application/json", schema = @Schema(implementation = GameResponseDTO.class)) }),
         @ApiResponse(responseCode = "400", description = "No se puede iniciar la partida (ej. no hay suficientes jugadores)"),
-        @ApiResponse(responseCode = "404", description = "Partida no encontrada")
+        @ApiResponse(responseCode = "404", description = "Partida no encontrada"),
+        @ApiResponse(responseCode = "403", description = "Solo el creador puede iniciar la partida")
     })
     @PostMapping("/{gameCode}/start")
-    public ResponseEntity<GameResponseDTO> startGameByCode(@PathVariable String gameCode) {
-        Game startedGame = gameService.startGameByCode(gameCode);
+    public ResponseEntity<GameResponseDTO> startGameByCode(
+        @PathVariable String gameCode,
+        @RequestBody StartGameRequestDTO request
+    ) {
+        Game startedGame = gameService.startGameByCode(gameCode, request.playerId());
         GameResponseDTO response = GameResponseDTO.fromEntity(startedGame);
         return ResponseEntity.ok(response);
     }

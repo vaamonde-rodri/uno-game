@@ -51,6 +51,7 @@ export interface GameResponseDTO {
   players: PlayerDTO[];
   topDiscardCard: CardDTO | null;
   currentPlayerId: number | null;
+  createdById: number | null;
 }
 
 export interface PlayerActionDTO {

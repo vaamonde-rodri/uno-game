@@ -14,6 +14,7 @@ public class GameResponseDTO {
     private List<PlayerDTO> players;
     private CardDTO topDiscardCard;
     private Long currentPlayerId;
+    private Long createdById;
 
     public static GameResponseDTO fromEntity(Game game) {
         GameResponseDTO dto = new GameResponseDTO();
@@ -32,6 +33,10 @@ public class GameResponseDTO {
             dto.setTopDiscardCard(
                 CardDTO.fromEntity(game.getDiscardPile().get(game.getDiscardPile().size() -1))
             );
+        }
+
+        if (game.getCreatedBy() != null) {
+            dto.setCreatedById(game.getCreatedBy().getId());
         }
 
         return dto;
