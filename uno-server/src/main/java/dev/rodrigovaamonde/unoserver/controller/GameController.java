@@ -36,6 +36,20 @@ public class GameController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
+    @Operation(summary = "Unirse a una partida por código", description = "Permite a un jugador unirse a una partida usando el código de la partida.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Jugador unido exitosamente",
+            content = { @Content(mediaType = "application/json", schema = @Schema(implementation = GameResponseDTO.class)) }),
+        @ApiResponse(responseCode = "400", description = "Petición inválida (ej. nombre de jugador ya existe o la partida ya empezó)"),
+        @ApiResponse(responseCode = "404", description = "Partida no encontrada")
+    })
+    @PostMapping("/join")
+    public ResponseEntity<GameResponseDTO> joinGameByCode(@RequestBody JoinGameRequestDTO request) {
+        Game updatedGame = gameService.joinGameByCode(request.gameCode(), request.playerName());
+        GameResponseDTO response = GameResponseDTO.fromEntity(updatedGame);
+        return ResponseEntity.ok(response);
+    }
+
     @Operation(summary = "Unirse a una partida existente", description = "Permite a un jugador unirse a una partida que está esperando jugadores.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Jugador unido exitosamente",
@@ -52,6 +66,20 @@ public class GameController {
 
         GameResponseDTO response = GameResponseDTO.fromEntity(updatedGame);
 
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Iniciar una partida por código", description = "Inicia una partida usando el código de la partida que tiene suficientes jugadores.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Partida iniciada exitosamente",
+            content = { @Content(mediaType = "application/json", schema = @Schema(implementation = GameResponseDTO.class)) }),
+        @ApiResponse(responseCode = "400", description = "No se puede iniciar la partida (ej. no hay suficientes jugadores)"),
+        @ApiResponse(responseCode = "404", description = "Partida no encontrada")
+    })
+    @PostMapping("/{gameCode}/start")
+    public ResponseEntity<GameResponseDTO> startGameByCode(@PathVariable String gameCode) {
+        Game startedGame = gameService.startGameByCode(gameCode);
+        GameResponseDTO response = GameResponseDTO.fromEntity(startedGame);
         return ResponseEntity.ok(response);
     }
 
