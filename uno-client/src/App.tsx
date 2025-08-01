@@ -1,35 +1,43 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState } from 'react';
+import { Lobby } from './pages/Lobby';
+import './App.css';
+
+type AppState = 'lobby' | 'game';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [currentState, setCurrentState] = useState<AppState>('lobby');
+  const [gameCode, setGameCode] = useState<string>('');
+  const [playerId, setPlayerId] = useState<number>(0);
+
+  const handleGameStart = (gameCode: string, playerId: number) => {
+    setGameCode(gameCode);
+    setPlayerId(playerId);
+    setCurrentState('game');
+  };
+
+  const handleBackToLobby = () => {
+    setCurrentState('lobby');
+    setGameCode('');
+    setPlayerId(0);
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div className="app">
+      {currentState === 'lobby' ? (
+        <Lobby onGameStart={handleGameStart} />
+      ) : (
+        <div className="game-placeholder">
+          <h2>🎮 ¡Partida iniciada!</h2>
+          <p>Código: {gameCode}</p>
+          <p>Jugador ID: {playerId}</p>
+          <button onClick={handleBackToLobby}>
+            Volver al Lobby
+          </button>
+          <p><em>El tablero de juego se implementará próximamente...</em></p>
+        </div>
+      )}
+    </div>
+  );
 }
 
-export default App
+export default App;
