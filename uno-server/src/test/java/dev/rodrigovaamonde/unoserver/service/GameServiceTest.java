@@ -1,5 +1,6 @@
 package dev.rodrigovaamonde.unoserver.service;
 
+import dev.rodrigovaamonde.unoserver.dto.ChallengeUnoRequestDTO;
 import dev.rodrigovaamonde.unoserver.dto.GameResponseDTO;
 import dev.rodrigovaamonde.unoserver.dto.PlayCardRequestDTO;
 import dev.rodrigovaamonde.unoserver.model.*; // Importar los modelos de cartas
@@ -459,7 +460,8 @@ class GameServiceTest {
         gameService.playCard(game.getGameCode(), request);
 
         assertEquals(Game.GameStatus.FINISHED, game.getStatus());
-        assertTrue(currentPlayer.getHand().isEmpty(), "El jugador debe haber jugado su última carta y no tener cartas en la mano.");
+        assertTrue(currentPlayer.getHand().isEmpty(),
+            "El jugador debe haber jugado su última carta y no tener cartas en la mano.");
         assertNull(game.getCurrentPlayer());
         verify(messagingTemplate, times(1)).convertAndSend(anyString(), any(GameResponseDTO.class));
     }
@@ -473,7 +475,7 @@ class GameServiceTest {
 
         gameService.declareUno(game.getGameCode(), player.getId());
 
-        assertTrue(player.isHasCedlaredUno());
+        assertTrue(player.isHasDeclaredUno());
     }
 
     @Test
@@ -484,5 +486,46 @@ class GameServiceTest {
         assertThrows(IllegalStateException.class, () -> {
             gameService.declareUno(game.getGameCode(), player.getId());
         });
+    }
+
+    @Test
+    void challengeUno_shouldSucceed_whenPlayerForgotToDeclare() {
+        Game game = setupInProgressGame();
+        Player challenger = game.getPlayers().getFirst();
+        Player challenged = game.getPlayers().get(1);
+
+        challenged.getHand().clear(); // Simulamos que el jugador desafiado no tiene cartas
+        challenged.getHand().add(new Card(Color.RED, CardValue.TWO));
+        challenged.setHasDeclaredUno(false); // Simulamos que no declaró "UNO"
+
+        ChallengeUnoRequestDTO challengeRequest = new ChallengeUnoRequestDTO(
+            challenger.getId(), challenged.getId()
+        );
+
+        gameService.challengeUno(game.getGameCode(), challengeRequest);
+
+        assertEquals(3, challenged.getHand().size(), "El jugador desafiado debe robar 2 cartas por no declarar 'UNO'.");
+        verify(messagingTemplate, times(1))
+            .convertAndSend(anyString(), any(GameResponseDTO.class));
+    }
+
+    @Test
+    void challengeUno_shouldFail_whenPlayerDeclaredUno() {
+        Game game = setupInProgressGame();
+        Player challenger = game.getPlayers().getFirst();
+        Player challenged = game.getPlayers().get(1);
+
+        challenged.getHand().clear();
+        challenged.getHand().add(new Card(Color.RED, CardValue.TWO));
+        challenged.setHasDeclaredUno(true); // Simulamos que el jugador desafiado sí declaró "UNO"
+
+        int challengerInitialHandSize = challenger.getHand().size();
+        ChallengeUnoRequestDTO challengeRequest = new ChallengeUnoRequestDTO(
+            challenger.getId(), challenged.getId()
+        );
+
+        gameService.challengeUno(game.getGameCode(), challengeRequest);
+
+        assertEquals(challengerInitialHandSize + 2, challenger.getHand().size());
     }
 }

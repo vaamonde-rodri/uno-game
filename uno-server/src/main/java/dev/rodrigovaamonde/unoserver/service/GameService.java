@@ -1,5 +1,6 @@
 package dev.rodrigovaamonde.unoserver.service;
 
+import dev.rodrigovaamonde.unoserver.dto.ChallengeUnoRequestDTO;
 import dev.rodrigovaamonde.unoserver.dto.GameResponseDTO;
 import dev.rodrigovaamonde.unoserver.dto.PlayCardRequestDTO;
 import dev.rodrigovaamonde.unoserver.model.*;
@@ -153,7 +154,7 @@ public class GameService {
 
         //Si el jugador ya no tiene una carta, su estado de "UNO" se resetea
         if (player.getHand().size() != 1) {
-            player.setHasCedlaredUno(false);
+            player.setHasDeclaredUno(false);
         }
 
         //Comprobar si el jugador ha ganado
@@ -244,7 +245,7 @@ public class GameService {
             .orElseThrow(() -> new RuntimeException("Player not found with id " + playerId + " in game " + gameCode));
 
         if (player.getHand().size() == 1) {
-            player.setHasCedlaredUno(true);
+            player.setHasDeclaredUno(true);
             //Guardamos el estado del jugador. No es necesario notificar a todos,
             // es un estado "silencioso" que se valida en la siguiente jugada o en un desafío.
             // Optionalamente, podíamos enviar una notificación específica para un feedback visual.
@@ -253,6 +254,34 @@ public class GameService {
             //Optional: Podríamos penalizar al jugador por intentar declarar UNO sin tener una sola carta.
             throw new IllegalStateException("You can only declare UNO when you have one card left.");
         }
+    }
+
+    @Transactional
+    public void challengeUno(String gameCode, ChallengeUnoRequestDTO request) {
+        Game game = getGame(gameCode);
+        if (game.getStatus() != Game.GameStatus.IN_PROGRESS) {
+            throw new IllegalStateException("Game is not in progress.");
+        }
+
+        Player challenger = game.getPlayers().stream()
+            .filter(p -> p.getId().equals(request.challengerId()))
+            .findFirst()
+            .orElseThrow(() -> new RuntimeException("Challenger not found with id " + request.challengerId() + " in game " + gameCode));
+
+        Player challenged = game.getPlayers().stream()
+            .filter(p -> p.getId().equals(request.challengedId()))
+            .findFirst()
+            .orElseThrow(() -> new RuntimeException("Challenged player not found with id " + request.challengedId() + " in game " + gameCode));
+
+        boolean challengeSuccessful = challenged.getHand().size() == 1 && !challenged.isHasDeclaredUno();
+
+        if (challengeSuccessful) {
+            drawCardsForPlayer(game, challenged, 2); // El jugador desafiado roba 2 cartas
+        } else {
+            drawCardsForPlayer(game, challenger, 2); // El desafiante roba 2 cartas
+        }
+
+        notifyGameUpdate(game);
     }
 
     public Game getGame(String gameCode) {

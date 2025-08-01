@@ -1,9 +1,6 @@
 package dev.rodrigovaamonde.unoserver.controller;
 
-import dev.rodrigovaamonde.unoserver.dto.DrawCardRequestDTO;
-import dev.rodrigovaamonde.unoserver.dto.DrawnCardDTO;
-import dev.rodrigovaamonde.unoserver.dto.PlayCardRequestDTO;
-import dev.rodrigovaamonde.unoserver.dto.PlayerActionDTO;
+import dev.rodrigovaamonde.unoserver.dto.*;
 import dev.rodrigovaamonde.unoserver.model.Card;
 import dev.rodrigovaamonde.unoserver.model.Game;
 import dev.rodrigovaamonde.unoserver.service.GameService;
@@ -103,6 +100,19 @@ public class GameWebSocketController {
         } catch (Exception e) {
             log.error("Error processing declare UNO request for game {}: {}", gameCode, e.getMessage(), e);
             //TODO: Enviar un mensaje de error específico al jugador que intentó declarar UNO.
+        }
+    }
+
+    @MessageMapping("/game/{gameCode}/challenge-uno")
+    public void challengeUno(
+        @DestinationVariable String gameCode,
+        @Payload ChallengeUnoRequestDTO request
+    ) {
+        try {
+            gameService.challengeUno(gameCode, request);
+        } catch (Exception e) {
+            log.error("Error processing challenge UNO request for game {}: {}", gameCode, e.getMessage(), e);
+            //TODO: ENviar un mensaje de error específico al jugador que intentó desafiar UNO.
         }
     }
 }
