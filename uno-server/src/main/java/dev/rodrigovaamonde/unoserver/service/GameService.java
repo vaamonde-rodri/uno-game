@@ -49,7 +49,7 @@ public class GameService {
 
         boolean playerExists = game.getPlayers().stream().anyMatch(p -> p.getName().equalsIgnoreCase(playerName));
         if (playerExists) {
-            throw new IllegalStateException("A player with the name '" + playerName + "' is already in this game");
+            throw new IllegalStateException("A player with the name '" + playerName + "' is already in this game.");
         }
 
         Player newPlayer = new Player(playerName);
@@ -69,11 +69,11 @@ public class GameService {
 
         //1. Validaciones
         if (game.getStatus() != Game.GameStatus.WAITING_FOR_PLAYERS) {
-            throw new IllegalStateException("Game has already started or is finished");
+            throw new IllegalStateException("Game has already started or is finished.");
         }
 
         if (game.getPlayers().size() < 2) {
-            throw new IllegalStateException("Cannot start the game with fewer than 2 players");
+            throw new IllegalStateException("Cannot start the game with fewer than 2 players.");
         }
 
         //2. Cambiar estado de la partida
@@ -139,17 +139,31 @@ public class GameService {
 
         //4. Validar la jugada
         if (!player.getId().equals(game.getCurrentPlayer().getId())) {
-            throw new IllegalStateException("It's not your turn to play.");
+            throw new IllegalStateException("It's not your turn.");
         }
 
         Card topDiscardCard = game.getDiscardPile().getLast();
         if (!isCardPlayable(cardToPlay, topDiscardCard, game.getCurrentColor())) {
-            throw new IllegalStateException("Card " + cardToPlay + " cannot be played on top of " + topDiscardCard);
+            throw new IllegalStateException("Card " + cardToPlay + " cannot be played on top of " + topDiscardCard + " with current color " + game.getCurrentColor());
         }
 
         //5. Ejecutar la jugada
         player.getHand().remove(cardToPlay);
         game.getDiscardPile().add(cardToPlay);
+
+        //Si el jugador ya no tiene una carta, su estado de "UNO" se resetea
+        if (player.getHand().size() != 1) {
+            player.setHasCedlaredUno(false);
+        }
+
+        //Comprobar si el jugador ha ganado
+        if (player.getHand().isEmpty()) {
+            game.setStatus(Game.GameStatus.FINISHED);
+            game.setCurrentPlayer(null); // No hay jugador actual, el juego ha terminado
+            Game finishedGame = gameRepository.save(game);
+            notifyGameUpdate(finishedGame);
+            return;
+        }
 
         //6. Aplicar efecto de la carta y determinar el siguiente jugador
         Player nextPlayer = applyCardEffect(game, player, cardToPlay, request.chosenColor());
@@ -176,7 +190,7 @@ public class GameService {
             throw new IllegalStateException("Game is not in progress.");
         }
         if (!player.getId().equals(game.getCurrentPlayer().getId())) {
-            throw new IllegalStateException("It's not your turn to draw a card.");
+            throw new IllegalStateException("It's not your turn.");
         }
 
         //3. Validar que el jugador realmente no puede jugar ninguna carta
@@ -191,7 +205,7 @@ public class GameService {
         //4. Robar una carta del mazo
         List<Card> drawnCards = drawCardsForPlayer(game, player, 1);
         if (drawnCards.isEmpty()) {
-            throw new IllegalStateException("No cards left in the draw pile.");
+            throw new IllegalStateException("No cards left to draw.");
         }
         Card drawnCard = drawnCards.getFirst();
 
@@ -211,7 +225,7 @@ public class GameService {
             .orElseThrow(() -> new RuntimeException("Player not found with id " + playerId + " in game " + gameCode));
 
         if (!player.getId().equals(game.getCurrentPlayer().getId())) {
-            throw new IllegalStateException("It's not your turn to pass.");
+            throw new IllegalStateException("It's not your turn.");
         }
 
         // Simplemente pasamos el turno al siguiente jugador
@@ -219,6 +233,26 @@ public class GameService {
         // Guardamos el estado del juego
         Game updatedGame = gameRepository.save(game);
         notifyGameUpdate(updatedGame);
+    }
+
+    @Transactional
+    public void declareUno(String gameCode, Long playerId) {
+        Game game = getGame(gameCode);
+        Player player = game.getPlayers().stream()
+            .filter(p -> p.getId().equals(playerId))
+            .findFirst()
+            .orElseThrow(() -> new RuntimeException("Player not found with id " + playerId + " in game " + gameCode));
+
+        if (player.getHand().size() == 1) {
+            player.setHasCedlaredUno(true);
+            //Guardamos el estado del jugador. No es necesario notificar a todos,
+            // es un estado "silencioso" que se valida en la siguiente jugada o en un desafío.
+            // Optionalamente, podíamos enviar una notificación específica para un feedback visual.
+            gameRepository.save(game);
+        } else {
+            //Optional: Podríamos penalizar al jugador por intentar declarar UNO sin tener una sola carta.
+            throw new IllegalStateException("You can only declare UNO when you have one card left.");
+        }
     }
 
     public Game getGame(String gameCode) {
@@ -283,8 +317,8 @@ public class GameService {
 
         // Cartas comodín (negras)
         IntStream.range(0, 4).forEach(i -> {
-            deck.add(new Card(null, Color.BLACK, CardValue.WILD));
-            deck.add(new Card(null, Color.BLACK, CardValue.WILD_DRAW_FOUR));
+            deck.add(new Card(Color.BLACK, CardValue.WILD));
+            deck.add(new Card(Color.BLACK, CardValue.WILD_DRAW_FOUR));
         });
 
         return deck;
@@ -295,7 +329,7 @@ public class GameService {
         if (playedCard.getColor() == Color.BLACK) {
             if (chosenColor == null || chosenColor == Color.BLACK) {
                 throw new IllegalStateException(
-                    "A valid color (RED, GREEN, BLUE, YELLOW) must be chosen when playing a wild card");
+                    "A valid color (RED, GREEN, BLUE, YELLOW) must be chosen when playing a wild card.");
             }
             game.setCurrentColor(chosenColor);
         } else {
@@ -343,7 +377,7 @@ public class GameService {
 
 
         int direction = game.isReversed() ? -1 : 1;
-        int nextPlayerIndex = (currentPlayerIndex + direction * positionsToAdvance + totalPlayers) % totalPlayers;
+        int nextPlayerIndex = (currentPlayerIndex + (direction * positionsToAdvance)) % totalPlayers;
 
         if (nextPlayerIndex < 0) {
             nextPlayerIndex += totalPlayers; // Asegura que el índice no sea negativo

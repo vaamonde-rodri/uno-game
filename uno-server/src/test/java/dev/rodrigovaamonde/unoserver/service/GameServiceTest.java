@@ -126,7 +126,7 @@ class GameServiceTest {
             gameService.joinGame(gameId, "Rodrigo");
         });
 
-        assertEquals("A player with the name 'Rodrigo' is already in this game", exception.getMessage());
+        assertEquals("A player with the name 'Rodrigo' is already in this game.", exception.getMessage());
     }
 
     @Test
@@ -201,7 +201,7 @@ class GameServiceTest {
             gameService.startGame(gameId);
         });
 
-        assertEquals("Cannot start the game with fewer than 2 players", exception.getMessage());
+        assertEquals("Cannot start the game with fewer than 2 players.", exception.getMessage());
     }
 
     @Test
@@ -246,7 +246,7 @@ class GameServiceTest {
         // Act & Assert
         IllegalStateException exception = assertThrows(IllegalStateException.class,
             () -> gameService.playCard(game.getGameCode(), request));
-        assertEquals("It's not your turn to play.", exception.getMessage());
+        assertEquals("It's not your turn.", exception.getMessage());
     }
 
     @Test
@@ -385,7 +385,7 @@ class GameServiceTest {
     }
 
     @Test
-    void drawCard_shouldReturnDrawnCard_andNotAdavenceTurn() {
+    void drawCard_shouldReturnDrawnCard_andNotAdvanceTurn() {
         // Arrange
         Game game = setupInProgressGame();
         Player currentPlayer = game.getCurrentPlayer();
@@ -441,6 +441,48 @@ class GameServiceTest {
 
         IllegalStateException exception = assertThrows(IllegalStateException.class,
             () -> gameService.drawCard(game.getGameCode(), notCurrentPlayer.getId()));
-        assertEquals("It's not your turn to draw a card.", exception.getMessage());
+        assertEquals("It's not your turn.", exception.getMessage());
+    }
+
+    @Test
+    void playCard_shouldFinishGame_whenPlayerHasNoCardsLeft() {
+        Game game = setupInProgressGame();
+        Player currentPlayer = game.getCurrentPlayer();
+
+        Card lastCard = new Card(Color.RED, CardValue.ONE);
+        lastCard.setId(100L);
+        currentPlayer.getHand().clear(); // Limpiamos la mano del jugador
+        currentPlayer.getHand().add(lastCard); // Añadimos la última carta jugable
+
+        PlayCardRequestDTO request = new PlayCardRequestDTO(currentPlayer.getId(), lastCard.getId(), null);
+
+        gameService.playCard(game.getGameCode(), request);
+
+        assertEquals(Game.GameStatus.FINISHED, game.getStatus());
+        assertTrue(currentPlayer.getHand().isEmpty(), "El jugador debe haber jugado su última carta y no tener cartas en la mano.");
+        assertNull(game.getCurrentPlayer());
+        verify(messagingTemplate, times(1)).convertAndSend(anyString(), any(GameResponseDTO.class));
+    }
+
+    @Test
+    void declareUno_shouldSucceed_whenPlayerHasOneCardLeft() {
+        Game game = setupInProgressGame();
+        Player player = game.getPlayers().getFirst();
+        player.getHand().clear();
+        player.getHand().add(new Card(Color.BLUE, CardValue.ONE)); // Deja al jugador con una sola carta
+
+        gameService.declareUno(game.getGameCode(), player.getId());
+
+        assertTrue(player.isHasCedlaredUno());
+    }
+
+    @Test
+    void declareUno_shouldFail_whenPlayerHasMoreThanOneCard() {
+        Game game = setupInProgressGame();
+        Player player = game.getPlayers().getFirst();
+
+        assertThrows(IllegalStateException.class, () -> {
+            gameService.declareUno(game.getGameCode(), player.getId());
+        });
     }
 }

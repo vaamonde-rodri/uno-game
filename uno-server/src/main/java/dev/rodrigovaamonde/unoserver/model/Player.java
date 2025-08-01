@@ -25,6 +25,8 @@ public class Player {
     @JoinColumn(name = "player_id")
     private List<Card> hand = new ArrayList<>();
 
+    private boolean hasCedlaredUno = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "game_id")
     @ToString.Exclude
