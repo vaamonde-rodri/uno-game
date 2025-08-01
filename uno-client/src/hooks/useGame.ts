@@ -13,7 +13,7 @@ interface UseGameReturn {
 
   // Acciones del juego
   createGame: (playerName: string) => Promise<void>;
-  joinGame: (gameCode: string, playerName: string) => Promise<void>;
+  joinGame: (gameCode: string, playerName: string) => Promise<GameResponseDTO>;
   playCard: (card: CardDTO, colorChosen?: string) => Promise<void>;
   drawCard: () => Promise<void>;
   startGame: () => Promise<void>;
@@ -94,8 +94,10 @@ export function useGame(playerId?: number): UseGameReturn {
     try {
       const joinedGame = await gameService.joinGame({ gameCode, playerName });
       setGame(joinedGame);
+      return joinedGame; // Devolver la partida actualizada
     } catch (err) {
       handleError(err);
+      throw err; // Re-lanzar el error para que el componente pueda manejarlo
     } finally {
       setLoading(false);
     }

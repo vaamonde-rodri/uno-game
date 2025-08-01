@@ -55,9 +55,9 @@ export function Lobby({ onGameStart }: LobbyProps) {
     }
 
     try {
-      await joinGame(gameCodeInput.toUpperCase(), playerName);
-      // Obtener el ID del jugador de la respuesta
-      const player = game?.players.find(p => p.name === playerName);
+      const joinedGame = await joinGame(gameCodeInput.toUpperCase(), playerName);
+      // Obtener el ID del jugador de la respuesta directa
+      const player = joinedGame.players.find(p => p.name === playerName);
       if (player) {
         setCurrentPlayerId(player.id);
       }
